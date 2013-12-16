@@ -31,6 +31,7 @@ namespace GoalsAndCornersPredictions
         private static GlobalData instance;
         public Database dbStuff { get; set; }
         public string predictDir { get; set; }
+        public string RexecutableFullPath { get; set; }
 
         private GlobalData() { }
 
@@ -97,7 +98,7 @@ namespace GoalsAndCornersPredictions
             log.Debug("Running process in directory: " + workingDirectory);
             //TODO: either use PATH env. or configurable full path
             ProcessStartInfo si = new ProcessStartInfo();
-            si.FileName = "R";
+            si.FileName = GlobalData.Instance.RexecutableFullPath;
             si.Arguments = "CMD BATCH ..\\script.R";
             si.WorkingDirectory = workingDirectory;
             si.UseShellExecute = true;
@@ -288,20 +289,14 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
            = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        static string dbConnectionString = ConfigurationManager.AppSettings["dbConnectionString"];
-        static string dbtype = ConfigurationManager.AppSettings["dbtype"];
-        static string uriHostPort = ConfigurationManager.AppSettings["uriHostPort"];
-        static string predictDir = ConfigurationManager.AppSettings["predictDir"];
         static bool alive = true;
 
         static void Main(string[] args)
         {
             string uriString;
-            string dbtype = "sqlite";
-            string dbConnectionString = "";
             DbCreator dbCreator = null;
 
-            switch (dbtype)
+            switch (ConfigurationManager.AppSettings["dbtype"])
             {
                 case "pg":
                     dbCreator = new NpgsqlCreator();
@@ -315,19 +310,21 @@ namespace GoalsAndCornersPredictions
             }
 
             Database db = new Database(dbCreator);
-            db.Connect(dbConnectionString);
+            db.Connect(ConfigurationManager.AppSettings["dbConnectionString"]);
 
-            //create working directory
-            if (Directory.Exists(predictDir) == false)
-            {
-                Directory.CreateDirectory(predictDir);
-            }
+          
 
             GlobalData gd = GlobalData.Instance;
             gd.dbStuff = db;
-            gd.predictDir = predictDir;
+            gd.predictDir = ConfigurationManager.AppSettings["predictDir"];
 
-            uriString = "http://" + uriHostPort;
+            //create working directory
+            if (Directory.Exists(gd.predictDir) == false)
+            {
+                Directory.CreateDirectory(gd.predictDir);
+            }
+
+            uriString = "http://" + ConfigurationManager.AppSettings["uriHostPort"];
 
             log.Info("Creating Webservice on: " + uriString);
 

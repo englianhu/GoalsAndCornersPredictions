@@ -85,17 +85,25 @@ namespace Db
 
         public void RunSQL(string sql, Action<DbDataReader> a)
         {
-            using (DbCommand cmd = dbCreator.newCommand(sql, connMgr.NextConnection()))
+            try
             {
-                using (DbDataReader dr = cmd.ExecuteReader())
+                using (DbCommand cmd = dbCreator.newCommand(sql, connMgr.NextConnection()))
                 {
-                    while (dr.Read())
+                    using (DbDataReader dr = cmd.ExecuteReader())
                     {
-                        a(dr);
-                    }
+                        while (dr.Read())
+                        {
+                            a(dr);
+                        }
 
-                    dr.Close();
+                        dr.Close();
+                    }
                 }
+            }
+            catch (DbException e)
+            {
+                log.Error("Exception: " + e);
+                throw e;
             }
         }
     }
