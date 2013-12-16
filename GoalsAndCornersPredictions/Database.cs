@@ -89,7 +89,7 @@ namespace Db
             {
                 using (DbDataReader dr = cmd.ExecuteReader())
                 {
-                    while (dr.Read())  //bug fix for repeated same game added after rematch
+                    while (dr.Read())
                     {
                         a(dr);
                     }
