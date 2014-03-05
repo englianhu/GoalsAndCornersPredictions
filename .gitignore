@@ -213,3 +213,4 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+packages/log4net.2.0.3/lib/net11-full/log4net.xml
