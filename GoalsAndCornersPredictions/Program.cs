@@ -22,7 +22,7 @@ namespace GoalsAndCornersPredictions
     {
         [OperationContract]
         [WebGet]
-        string GetGoalsAndCornersPred(string game_id);
+        string GetGoalsAndCornersPred(string gameId);
     }
 
 
@@ -30,8 +30,9 @@ namespace GoalsAndCornersPredictions
     {
         private static GlobalData instance;
         public Database dbStuff { get; set; }
-        public string predictDir { get; set; }
+        public string PredictionDir { get; set; }
         public string RexecutableFullPath { get; set; }
+        public string ScriptFullPath { get; set; }
 
         private GlobalData() { }
 
@@ -99,7 +100,7 @@ namespace GoalsAndCornersPredictions
             //TODO: either use PATH env. or configurable full path
             ProcessStartInfo si = new ProcessStartInfo();
             si.FileName = GlobalData.Instance.RexecutableFullPath;
-            si.Arguments = "CMD BATCH ..\\script.R";
+            si.Arguments = "CMD BATCH " + GlobalData.Instance.ScriptFullPath;
             si.WorkingDirectory = workingDirectory;
             si.UseShellExecute = true;
             si.CreateNoWindow = true;
@@ -124,17 +125,20 @@ namespace GoalsAndCornersPredictions
         }
     };
 
-    public class Predictions : Dictionary<int, Dictionary<int, String>>
+   public class ProbabilityHolder
     {
+        public int team1Id;
+        public int team2Id;
+        public string probability;
+    }
 
-    };
 
     public class ReadPrediction
     {
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public Predictions data = new Predictions();
+        public List<ProbabilityHolder> data = new List<ProbabilityHolder>();
 
         public ReadPrediction(Database dbStuff, String path, String file_name)
         {
@@ -146,7 +150,6 @@ namespace GoalsAndCornersPredictions
             var header = reader.ReadLine();
             String[] team_names = header.Split(';');
 
-
             log.Debug(team_names);
 
             //store team with their team id not team name
@@ -155,9 +158,9 @@ namespace GoalsAndCornersPredictions
             bool skip_first = true;
             foreach (String team_name in team_names)
             {
-                if (skip_first)
+                if (!skip_first)
                 {
-                    dbStuff.RunSQL("select id from teams where name = " + team_name + ";",
+                    dbStuff.RunSQL("select id from teams where name = '" + team_name + "';",
                         (dr) =>
                         {
                             team_ids.Add(int.Parse(dr[0].ToString()));
@@ -169,20 +172,18 @@ namespace GoalsAndCornersPredictions
                     skip_first = false;
                 }
             }
+
             int j = 1;
 
             while (!reader.EndOfStream)
             {
-                Dictionary<int, String> row = new Dictionary<int, String>();
                 var line = reader.ReadLine();
                 String[] values = line.Split(';');
 
                 for (int i = 1; i < values.Length; i++)
                 {
-                    row.Add(team_ids[i], values[i]);
-                }
-
-                data.Add(team_ids[j], row);
+                    data.Add(new ProbabilityHolder( ) { team1Id = team_ids[j], team2Id = team_ids[i], probability = values[i] });
+                }        
                 j++;
             }
         }
@@ -200,13 +201,13 @@ namespace GoalsAndCornersPredictions
             dbStuff = gd.dbStuff;
         }
 
-        public string GetGoalsAndCornersPred(string game_id)
+        public string GetGoalsAndCornersPred(string gameId)
         {
             log.Info("GetGoalsAndCornersPred is being invoked");
             string league_id = null;
 
             //get league id
-            dbStuff.RunSQL("SELECT league_id FROM games WHERE id = " + game_id + ";",
+            dbStuff.RunSQL("SELECT league_id FROM games WHERE id = " + gameId + ";",
                 (dr) =>
                 {
                     league_id = dr[0].ToString();
@@ -220,7 +221,7 @@ namespace GoalsAndCornersPredictions
             + " FROM statistics s, games g, teams t1, teams t2"
             + " WHERE g.league_id = "
             + league_id
-            + " AND s.game_id = g.id AND t1.id = g.team1 AND t2.id = g.team2 GROUP BY s.game_id;",
+            + " AND s.game_id = g.id AND t1.id = g.team1 AND t2.id = g.team2 GROUP BY s.game_id, t1.name, t2.name;",
                 (dr) =>
                 {
                     GameResult res = new GameResult();
@@ -237,7 +238,7 @@ namespace GoalsAndCornersPredictions
             log.Debug("Number of games : " + games.Count);
 
             String league_day = league_id + "_" + DateTime.Today.ToString("ddMMyyyy");
-            String path = Path.Combine(GlobalData.Instance.predictDir, league_day);
+            String path = Path.Combine(GlobalData.Instance.PredictionDir, league_day);
 
             //create working directory
             if (Directory.Exists(path) == false)
@@ -256,7 +257,7 @@ namespace GoalsAndCornersPredictions
 
             int team1 = -1;
             int team2 = -1;
-            dbStuff.RunSQL("SELECT team1, team2 FROM games WHERE id = " + game_id + ";",
+            dbStuff.RunSQL("SELECT team1, team2 FROM games WHERE id = " + gameId + ";",
                 (dr) =>
                 {
                     team1 = int.Parse(dr[0].ToString());
@@ -264,20 +265,20 @@ namespace GoalsAndCornersPredictions
                 }
             );
 
-            log.Info("Game: " + game_id + " team1: " + team1 + " team2: " + team2);
+            log.Info("Game: " + gameId + " team1: " + team1 + " team2: " + team2);
 
             PredRow row = new PredRow();
             try
             {
-                row.gameId = game_id;
-                row.winHome = winH.data[team1][team2];
-                row.winAway = winA.data[team1][team2];
-                row.likelyProb = likelyProb.data[team1][team2];
-                row.likelyScore = likelyScore.data[team1][team2];
+                row.gameId = gameId;
+                row.winHome = winH.data.Where( x => x.team1Id == team1 &&  x.team2Id == team2 ).First().probability;
+                row.winAway = winA.data.Where( x => x.team1Id == team1 &&  x.team2Id == team2 ).First().probability;
+                row.likelyProb = likelyProb.data.Where( x => x.team1Id == team1 &&  x.team2Id == team2 ).First().probability;
+                row.likelyScore = likelyScore.data.Where( x => x.team1Id == team1 &&  x.team2Id == team2 ).First().probability;
             }
             catch (Exception e)
             {
-                log.Warn("Exception caught while getting match predictions for game: " + game_id + " exception: " + e);
+                log.Warn("Exception caught while getting match predictions for game: " + gameId + " exception: " + e);
             }
 
             return JsonConvert.SerializeObject(row, Formatting.Indented);
@@ -316,12 +317,14 @@ namespace GoalsAndCornersPredictions
 
             GlobalData gd = GlobalData.Instance;
             gd.dbStuff = db;
-            gd.predictDir = ConfigurationManager.AppSettings["predictDir"];
+            gd.PredictionDir = ConfigurationManager.AppSettings["PredictionDir"];
+            gd.RexecutableFullPath = ConfigurationManager.AppSettings["RexecutableFullPath"];
+            gd.ScriptFullPath = ConfigurationManager.AppSettings["ScriptFullPath"];
 
             //create working directory
-            if (Directory.Exists(gd.predictDir) == false)
+            if (Directory.Exists(gd.PredictionDir) == false)
             {
-                Directory.CreateDirectory(gd.predictDir);
+                Directory.CreateDirectory(gd.PredictionDir);
             }
 
             uriString = "http://" + ConfigurationManager.AppSettings["uriHostPort"];
