@@ -82,6 +82,28 @@ namespace Db
             return retVal;
         }
 
+        public List<string> OneColumnQuery(string sql)
+        {
+            var ids = new List<string>();
+
+            using (DbCommand find = dbCreator.newCommand(sql, connMgr.NextConnection()))
+            {
+                using (DbDataReader dr = find.ExecuteReader())
+                {
+                    bool hasRows = dr.HasRows;
+
+                    if (hasRows == true)
+                    {
+                        while (dr.Read())
+                        {
+                            ids.Add(dr[0].ToString());
+                        }
+                    }
+                }
+            }
+
+            return ids;
+        }
 
         public void RunSQL(string sql, Action<DbDataReader> a)
         {

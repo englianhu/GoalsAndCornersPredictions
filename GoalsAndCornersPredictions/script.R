@@ -33,7 +33,6 @@ ConcedeTotal <- data.frame(Team=ConcedeTotal$Team, Goals=rowSums(cbind(ConcedeTo
 ## avergae conceded is same as average scored!
 ConcedeTotal <- cbind(ConcedeTotal, defenceweakness=ConcedeTotal$Goals/(numGames$numGames*meanScore))
 
-
 ## average number of goals scored at home
 avGoalsH <- mean(data$HomeGoals)
 
@@ -67,8 +66,8 @@ for (HomeTeam in team.names){
 }
 write.csv2(winH, "winH.csv", row.names=FALSE, sep=";",quote=FALSE)
 write.csv2(winA, "winA.csv", row.names=FALSE, sep=";",quote=FALSE)
-write.csv2(likelyProb, "likelyProb.csv", row.names=FALSE, sep=";",quote=FALSE)
 
+write.csv2(likelyProb, "likelyProb.csv", row.names=FALSE, sep=";",quote=FALSE)
 write.csv2(likelyScore, "likelyScore.csv", row.names=FALSE, sep=";",quote=FALSE)
 
 
