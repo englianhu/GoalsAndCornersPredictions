@@ -352,8 +352,8 @@ namespace GoalsAndCornersPredictions
                    team2Id = dr[1].ToString();
                });
 
-            string team1LeaguesSQL = "select distinct league_id from games where team1 = " + team1Id + " and league_id != -1";
-            string team2LeaguesSQL = "select distinct league_id from games where team2 = " + team2Id + " and league_id != -1";
+            string team1LeaguesSQL = "select distinct league_id from games where team1 = " + team1Id + " or team2 = " + team1Id + " and league_id != -1";
+            string team2LeaguesSQL = "select distinct league_id from games where team1 = " + team2Id + " or team2 = " + team2Id + " and league_id != -1";
 
             var team1Leagues = dbStuff.OneColumnQuery(team1LeaguesSQL);
             var team2Leagues = dbStuff.OneColumnQuery(team2LeaguesSQL);
