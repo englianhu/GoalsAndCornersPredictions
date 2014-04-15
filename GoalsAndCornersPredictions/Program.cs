@@ -133,6 +133,7 @@ namespace GoalsAndCornersPredictions
 
             try
             {
+                int maxRWaitTime = 300;
                 rHasExited = false;
                 using (Process p = new Process())
                 {
@@ -141,10 +142,12 @@ namespace GoalsAndCornersPredictions
                     p.EnableRaisingEvents = true;
                     p.Start();
 
-                    while (rHasExited == false)
+                    int waitedTime = 0;
+                    while (rHasExited == false || waitedTime < maxRWaitTime)
                     {
-                        log.Debug("Waiting 1 second for R process to finish: " + p.HandleCount + " handles open");
-                        System.Threading.Thread.Sleep(1000);
+                        log.Debug("Waiting " + waitedTime + " seconds for R process to finish");
+                        System.Threading.Thread.Sleep(5000);
+                        waitedTime += 5;
                     }
                 }
             }
