@@ -143,11 +143,22 @@ namespace GoalsAndCornersPredictions
                     p.Start();
 
                     int waitedTime = 0;
+                    
                     while (rHasExited == false || waitedTime < maxRWaitTime)
                     {
                         log.Debug("Waiting " + waitedTime + " seconds for R process to finish");
+                        
                         System.Threading.Thread.Sleep(5000);
+
                         waitedTime += 5;
+
+                        var rProcesses = Process.GetProcesses().ToArray().ToList().Select(x => x.MainWindowTitle);
+
+                        if (rProcesses.Any(y => y.Equals( "C:\\Program Files\\R\\R-3.0.3\\bin\\x64\\R.exe")) == false)
+                        {
+                            log.Warn("Looks like R has left the building...");
+                            break;
+                        }
                     }
                 }
             }
