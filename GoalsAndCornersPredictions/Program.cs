@@ -209,10 +209,10 @@ namespace GoalsAndCornersPredictions
                     var likelyScoreResults = likelyScore.Where(x => x.team1Id == team1 && x.team2Id == team2);
                     row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
 
-                    if (row.winHome == "-1") { log.Warn("WARNING! Failed to calulate corners win home probabilty for " + gameId); }
-                    if (row.winAway == "-1") { log.Warn("WARNING! Failed to calulate corners win away probabilty for " + gameId); }
-                    if (row.likelyProb == "-1") { log.Warn("WARNING! Failed to calulate corners likely probabilty for " + gameId); }
-                    if (row.likelyScore == "-1") { log.Warn("WARNING! Failed to calulate corners likely score for " + gameId); }
+                    if (row.winHome == "-1") { var msg = "WARNING! Failed to calulate corners win home probabilty for " + gameId; log.Warn(msg); return msg; }
+                    if (row.winAway == "-1") { var msg = "WARNING! Failed to calulate corners win away probabilty for " + gameId; log.Warn(msg); return msg; }
+                    if (row.likelyProb == "-1") { var msg = "WARNING! Failed to calulate corners likely probabilty for " + gameId; log.Warn(msg); return msg; }
+                    if (row.likelyScore == "-1") { var msg = "WARNING! Failed to calulate corners likely score for " + gameId; log.Warn(msg); return msg; }
                 }
                 catch (Exception e)
                 {
@@ -375,10 +375,10 @@ namespace GoalsAndCornersPredictions
                 var likelyScoreResults = likelyScore.Where(x => x.team1Id == team1 && x.team2Id == team2);
                 row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
 
-                if (row.winHome == "-1") { log.Warn("WARNING! Failed to calulate goals win home probabilty for " + gameId); }
-                if (row.winAway == "-1") { log.Warn("WARNING! Failed to calulate goals win away probabilty for " + gameId); }
-                if (row.likelyProb == "-1") { log.Warn("WARNING! Failed to calulate goals likely probabilty for " + gameId); }
-                if (row.likelyScore == "-1") { log.Warn("WARNING! Failed to calulate goals likely score for " + gameId); }
+                if (row.winHome == "-1") { var msg = "WARNING! Failed to calulate goals win home probabilty for " + gameId; log.Warn(msg); return msg; }
+                if (row.winAway == "-1") { var msg = "WARNING! Failed to calulate goals win away probabilty for " + gameId; log.Warn(msg); return msg; }
+                if (row.likelyProb == "-1") { var msg = "WARNING! Failed to calulate goals likely probabilty for " + gameId; log.Warn(msg); return msg; }
+                if (row.likelyScore == "-1") { var msg = "WARNING! Failed to calulate goals likely score for " + gameId; log.Warn(msg); return msg; }
             }
             catch (Exception e)
             {
