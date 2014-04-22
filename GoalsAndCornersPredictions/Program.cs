@@ -113,129 +113,6 @@ namespace GoalsAndCornersPredictions
         }
     };
 
-    public class ExecuteR
-    {
-        private static readonly log4net.ILog log
-          = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
-        bool rHasExited = false;
-        public ExecuteR(String workingDirectory)
-        {
-            log.Debug("Running process in directory: " + workingDirectory);
-            //TODO: either use PATH env. or configurable full path
-            ProcessStartInfo si = new ProcessStartInfo();
-            si.FileName = GlobalData.Instance.RexecutableFullPath;
-            //si.Arguments = "CMD BATCH " + GlobalData.Instance.ScriptFullPath;
-            si.Arguments = @"CMD BATCH C:\Users\daddy\Documents\GitHub\GoalsAndCornersPredictions\GoalsAndCornersPredictions\script.R";
-            si.WorkingDirectory = workingDirectory;
-            si.UseShellExecute = true;
-            si.CreateNoWindow = true;
-
-            try
-            {
-                int maxRWaitTime = 300;
-                rHasExited = false;
-                using (Process p = new Process())
-                {
-                    p.StartInfo = si;
-                    p.Exited += processExited;
-                    p.EnableRaisingEvents = true;
-                    p.Start();
-
-                    int waitedTime = 0;
-                    
-                    while (rHasExited == false || waitedTime < maxRWaitTime)
-                    {
-                        log.Debug("Waiting " + waitedTime + " seconds for R process to finish");
-                        
-                        System.Threading.Thread.Sleep(5000);
-
-                        waitedTime += 5;
-
-                        var rProcesses = Process.GetProcesses().ToArray().ToList().Select(x => x.MainWindowTitle);
-
-                        if (rProcesses.Any(y => y.Equals( "C:\\Program Files\\R\\R-3.0.3\\bin\\x64\\R.exe")) == false)
-                        {
-                            log.Warn("Looks like R has left the building...");
-                            break;
-                        }
-                    }
-                }
-            }
-            catch (InvalidOperationException e)
-            {
-                log.Error("Error executing process exception: " + e);
-            }
-            catch (Exception e)
-            {
-                log.Error("Error executing process exception: " + e);
-            }
-        }
-
-        void processExited(object sender, EventArgs e)
-        {
-            rHasExited = true;
-        }
-    };
-
-    public class ProbabilityHolder
-    {
-        public int team1Id;
-        public int team2Id;
-        public string probability;
-    }
-
-
-    public class ReadPrediction
-    {
-        private static readonly log4net.ILog log
-          = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
-        public List<ProbabilityHolder> data = new List<ProbabilityHolder>();
-
-        public ReadPrediction(Database dbStuff, String path, String file_name)
-        {
-            String full_name = Path.Combine(path, file_name);
-            var reader = new StreamReader(File.OpenRead(full_name));
-
-            //read header which is:
-            //Teams, TeamName1, TeamName2
-            var header = reader.ReadLine();
-            var team_names = header.Split(';').ToList();
-            team_names.RemoveAt(0);
-
-            log.Debug(team_names);
-
-            //store team with their team id not team name
-            List<int> team_ids = new List<int>();
-            team_ids.Add(0);
-
-            foreach (String team_name in team_names)
-            {
-                dbStuff.RunSQL("select id from teams where name = '" + team_name + "';",
-                    (dr) =>
-                    {
-                        team_ids.Add(int.Parse(dr[0].ToString()));
-                    }
-                );
-            }
-
-            int j = 1;
-
-            while (!reader.EndOfStream)
-            {
-                var line = reader.ReadLine();
-                String[] values = line.Split(';');
-
-                for (int i = 1; i < values.Length; i++)
-                {
-                    data.Add(new ProbabilityHolder() { team1Id = team_ids[j], team2Id = team_ids[i], probability = values[i] });
-                }
-                j++;
-            }
-        }
-    };
-
     public class Service : IService
     {
         private static readonly log4net.ILog log
@@ -289,50 +166,63 @@ namespace GoalsAndCornersPredictions
             if (Directory.Exists(path) == false)
             {
                 Directory.CreateDirectory(path);
+                var file = new CreateInputFileCorners(path, games, team1Name, team2Name);
+                //RExecutor r = new RExecutor(path);
+                RNETExecutor.Execute(path);
             }
-            else
-            {
-                Directory.Delete(path, true);
-                Directory.CreateDirectory(path);
-            }
-
-            var file = new CreateInputFileCorners(path, games, team1Name, team2Name);
-            ExecuteR r = new ExecuteR(path);
-
+            
             //read data back
-            ReadPrediction winH = new ReadPrediction(dbStuff, path, "winH.csv");
-            ReadPrediction winA = new ReadPrediction(dbStuff, path, "winA.csv");
-            ReadPrediction likelyScore = new ReadPrediction(dbStuff, path, "likelyScore.csv");
-            ReadPrediction likelyProb = new ReadPrediction(dbStuff, path, "likelyProb.csv");
+            var winH = PredictionReader.Read(dbStuff, Path.Combine(path, "winH.csv"));
+            var winA = PredictionReader.Read(dbStuff, Path.Combine(path, "winA.csv"));
+            var likelyScore = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyScore.csv"));
+            var likelyProb = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyProb.csv"));
 
-            int team1 = -1;
-            int team2 = -1;
+            if (winH != null && winA != null && likelyProb != null && likelyProb != null)
+            {
+                int team1 = -1;
+                int team2 = -1;
 
-            dbStuff.RunSQL("SELECT team1, team2 FROM games WHERE id = " + gameId + ";",
-                (dr) =>
+                dbStuff.RunSQL("SELECT team1, team2 FROM games WHERE id = " + gameId + ";",
+                    (dr) =>
+                    {
+                        team1 = int.Parse(dr[0].ToString());
+                        team2 = int.Parse(dr[1].ToString());
+                    }
+                );
+
+                log.Info("Game: " + gameId + " team1: " + team1 + " team2: " + team2);
+
+                PredRow row = new PredRow();
+
+                try
                 {
-                    team1 = int.Parse(dr[0].ToString());
-                    team2 = int.Parse(dr[1].ToString());
+                    row.gameId = gameId;
+                    var winHomeResults = winH.Where(x => x.team1Id == team1 && x.team2Id == team2);
+                    row.winHome = winHomeResults.Count() != 0 ? winHomeResults.First().probability : "-1";
+
+                    var winAwayResults = winA.Where(x => x.team1Id == team1 && x.team2Id == team2);
+                    row.winAway = winAwayResults.Count() != 0 ? winAwayResults.First().probability : "-1";
+
+                    var likelyProbResults = likelyProb.Where(x => x.team1Id == team1 && x.team2Id == team2);
+                    row.likelyProb = likelyProbResults.Count() != 0 ? likelyProbResults.First().probability : "-1";
+
+                    var likelyScoreResults = likelyScore.Where(x => x.team1Id == team1 && x.team2Id == team2);
+                    row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
+
+                    if (row.winHome == "-1") { log.Warn("WARNING! Failed to calulate corners win home probabilty for " + gameId); }
+                    if (row.winAway == "-1") { log.Warn("WARNING! Failed to calulate corners win away probabilty for " + gameId); }
+                    if (row.likelyProb == "-1") { log.Warn("WARNING! Failed to calulate corners likely probabilty for " + gameId); }
+                    if (row.likelyScore == "-1") { log.Warn("WARNING! Failed to calulate corners likely score for " + gameId); }
                 }
-            );
+                catch (Exception e)
+                {
+                    log.Warn("Exception caught while getting match predictions for game: " + gameId + " exception: " + e);
+                }
 
-            log.Info("Game: " + gameId + " team1: " + team1 + " team2: " + team2);
-
-            PredRow row = new PredRow();
-            try
-            {
-                row.gameId = gameId;
-                row.winHome = winH.data.Where(x => x.team1Id == team1 && x.team2Id == team2).First().probability;
-                row.winAway = winA.data.Where(x => x.team1Id == team1 && x.team2Id == team2).First().probability;
-                row.likelyProb = likelyProb.data.Where(x => x.team1Id == team1 && x.team2Id == team2).First().probability;
-                row.likelyScore = likelyScore.data.Where(x => x.team1Id == team1 && x.team2Id == team2).First().probability;
-            }
-            catch (Exception e)
-            {
-                log.Warn("Exception caught while getting match predictions for game: " + gameId + " exception: " + e);
+                return JsonConvert.SerializeObject(row, Formatting.Indented);
             }
 
-            return JsonConvert.SerializeObject(row, Formatting.Indented);
+            return "Failed to Generate Prediction";
         }
 
         public string GetGameDetails(string id)
@@ -369,10 +259,27 @@ namespace GoalsAndCornersPredictions
             var team1Leagues = dbStuff.OneColumnQuery(team1LeaguesSQL);
             var team2Leagues = dbStuff.OneColumnQuery(team2LeaguesSQL);
 
-            var common = team1Leagues.Intersect(team2Leagues);
+            var common = team1Leagues.Intersect(team2Leagues).ToList();
 
             if (common.Count() != 0)
             {
+                var gamesCount = 0;
+                for (var i = 0; i < common.Count(); ++i)
+                {
+                   dbStuff.RunSQL("select count(*) from games where league_id = " + common[i],
+                   (dr) =>
+                   {
+                       gamesCount += int.Parse(dr[0].ToString());
+                   });
+
+                   if (gamesCount > 300)
+                   {
+                       log.Warn("Game Count too deep: " + gamesCount);
+                       log.Warn("Removing league id: " + common[i]);
+                       common.RemoveAt(i);
+                   }
+                }
+
                 leagueIds = String.Join(",", common);
             }
             else
@@ -429,21 +336,16 @@ namespace GoalsAndCornersPredictions
             if (Directory.Exists(path) == false)
             {
                 Directory.CreateDirectory(path);
+                var file = new CreateInputFileGoals(path, games, team1Name, team2Name);
+                //RExecutor r = new RExecutor(path);
+                RNETExecutor.Execute(path);
             }
-            else
-            {
-                Directory.Delete(path, true);
-                Directory.CreateDirectory(path);
-            }
-
-            var file = new CreateInputFileGoals(path, games, team1Name, team2Name);
-            ExecuteR r = new ExecuteR(path);
 
             //read data back
-            ReadPrediction winH = new ReadPrediction(dbStuff, path, "winH.csv");
-            ReadPrediction winA = new ReadPrediction(dbStuff, path, "winA.csv");
-            ReadPrediction likelyScore = new ReadPrediction(dbStuff, path, "likelyScore.csv");
-            ReadPrediction likelyProb = new ReadPrediction(dbStuff, path, "likelyProb.csv");
+            var winH = PredictionReader.Read(dbStuff, Path.Combine(path, "winH.csv"));
+            var winA = PredictionReader.Read(dbStuff, Path.Combine(path, "winA.csv"));
+            var likelyScore = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyScore.csv"));
+            var likelyProb = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyProb.csv"));
 
             int team1 = -1;
             int team2 = -1;
@@ -461,22 +363,22 @@ namespace GoalsAndCornersPredictions
             try
             {
                 row.gameId = gameId;
-                var winHomeResults = winH.data.Where(x => x.team1Id == team1 && x.team2Id == team2);
+                var winHomeResults = winH.Where(x => x.team1Id == team1 && x.team2Id == team2);
                 row.winHome = winHomeResults.Count() != 0 ? winHomeResults.First().probability : "-1";
 
-                var winAwayResults = winA.data.Where(x => x.team1Id == team1 && x.team2Id == team2);
+                var winAwayResults = winA.Where(x => x.team1Id == team1 && x.team2Id == team2);
                 row.winAway = winAwayResults.Count() != 0 ? winAwayResults.First().probability : "-1";
 
-                var likelyProbResults = likelyProb.data.Where(x => x.team1Id == team1 && x.team2Id == team2);
+                var likelyProbResults = likelyProb.Where(x => x.team1Id == team1 && x.team2Id == team2);
                 row.likelyProb = likelyProbResults.Count() != 0 ? likelyProbResults.First().probability : "-1";
 
-                var likelyScoreResults = likelyScore.data.Where(x => x.team1Id == team1 && x.team2Id == team2);
+                var likelyScoreResults = likelyScore.Where(x => x.team1Id == team1 && x.team2Id == team2);
                 row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
 
-                if (row.winHome == "-1") { log.Warn("WARNING! Failed to calulate win home probabilty for " + gameId); }
-                if (row.winAway == "-1") { log.Warn("WARNING! Failed to calulate win away probabilty for " + gameId); }
-                if (row.likelyProb == "-1") { log.Warn("WARNING! Failed to calulate likely probabilty for " + gameId); }
-                if (row.likelyScore == "-1") { log.Warn("WARNING! Failed to calulate likely score for " + gameId); }
+                if (row.winHome == "-1") { log.Warn("WARNING! Failed to calulate goals win home probabilty for " + gameId); }
+                if (row.winAway == "-1") { log.Warn("WARNING! Failed to calulate goals win away probabilty for " + gameId); }
+                if (row.likelyProb == "-1") { log.Warn("WARNING! Failed to calulate goals likely probabilty for " + gameId); }
+                if (row.likelyScore == "-1") { log.Warn("WARNING! Failed to calulate goals likely score for " + gameId); }
             }
             catch (Exception e)
             {

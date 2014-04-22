@@ -1,4 +1,8 @@
+cat("test test")
+
 data <- read.csv("input.txt")
+
+cat("test test")
 
 library(plyr)
 
@@ -64,6 +68,7 @@ for (HomeTeam in team.names){
     #draw[HomeTeam, AwayTeam] <- sum(sapply(goals, function(x) dpois(x, lambda=GoalsA[HomeTeam, AwayTeam])*dpois(x, lambda=GoalsH[HomeTeam, AwayTeam])))/length(goals)
   }
 }
+
 write.csv2(winH, "winH.csv", row.names=FALSE, sep=";",quote=FALSE)
 write.csv2(winA, "winA.csv", row.names=FALSE, sep=";",quote=FALSE)
 
