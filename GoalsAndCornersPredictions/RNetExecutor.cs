@@ -14,16 +14,18 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public RNETExecutor(String workingDirectory)
-        {
-
-        }
-
+        static REngine engine = null;
         public static bool Execute(String workingDirectory)
         {
+            log.Info("RNETExecutor --------->");
+
             var envPath = Environment.GetEnvironmentVariable("PATH");
             var rBinPath = @"C:\Program Files\R\R-3.0.3\bin\x64";
             Environment.SetEnvironmentVariable("PATH", envPath + Path.PathSeparator + rBinPath);
+
+            var rDllPath = Path.Combine(rBinPath, "R.dll");
+            //string newDllPath = System.IO.Path.GetTempPath() + Guid.NewGuid().ToString() + ".dll";
+            //File.Copy(rDllPath, newDllPath);
 
             string inputPath = workingDirectory + Path.DirectorySeparatorChar + "input.txt";
             string winHPath = workingDirectory + Path.DirectorySeparatorChar + "winH.csv";
@@ -31,14 +33,27 @@ namespace GoalsAndCornersPredictions
             string likelyProbPath = workingDirectory + Path.DirectorySeparatorChar + "likelyProb.csv";
             string likelyScorePath = workingDirectory + Path.DirectorySeparatorChar + "likelyScore.csv";
 
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             try
             {
+                engine = REngine.GetInstanceFromID("RDotNet");
 
-                using (REngine engine = REngine.CreateInstance(System.Guid.NewGuid().ToString()))
+                if(engine == null)
                 {
-                    // From v1.5, REngine requires explicit initialization.
-                    // You can set some parameters.
+                    log.Info("Creating a new instance of the R-Engine");
+                    engine = REngine.CreateInstance("RDotNet");
+                    log.Info("Initializing a new instance of the R-Engine");
                     engine.Initialize();
+                    log.Info("Initialized new instance of the R-Engine");
+                }
+                else
+                {
+                    log.Info("Reusing old instance of the R-Engine");
+                }
+
+                {
                     CharacterVector ccv1 = engine.CreateCharacterVector(new List<string>() { inputPath });
                     CharacterVector ccv2 = engine.CreateCharacterVector(new List<string>() { winHPath });
                     CharacterVector ccv3 = engine.CreateCharacterVector(new List<string>() { winAPath });
@@ -63,21 +78,33 @@ namespace GoalsAndCornersPredictions
                     // goals scored by Team
                     engine.Evaluate("HomeGoals <- aggregate(data$HomeGoals, by=list(data$HomeTeam), sum)");
                     engine.Evaluate("AwayGoals <- aggregate(data$AwayGoals, by=list(data$AwayTeam), sum)");
+
+                    engine.Evaluate("cat (\"10%\", \"\n\")");
+
                     engine.Evaluate("ScoreTotal <- join(HomeGoals, AwayGoals, by=\"Group.1\")");
                     engine.Evaluate("names(ScoreTotal)<-c(\"Team\",\"Home\",\"Away\")");
                     engine.Evaluate("ScoreTotal <- data.frame(Team=ScoreTotal$Team, Goals=rowSums(cbind(ScoreTotal$Home,ScoreTotal$Away), na.rm=T))");
+
+                    engine.Evaluate("cat (\"20%\", \"\n\")");
 
                     engine.Evaluate("print(ScoreTotal)");
                     // number of games played by Team
                     engine.Evaluate("numGamesH <- aggregate(data$HomeTeam, by=list(data$HomeTeam), length)");
                     engine.Evaluate("numGamesA <- aggregate(data$AwayTeam, by=list(data$AwayTeam), length)");
+
+                    engine.Evaluate("cat (\"30%\", \"\n\")");
+
                     engine.Evaluate("numGames <- join(numGamesH, numGamesA, by=\"Group.1\")");
                     engine.Evaluate("names(numGames)<-c(\"Team\",\"Home\",\"Away\")");
                     engine.Evaluate("numGames <- data.frame(Team=numGames$Team, numGames=rowSums(cbind(numGames$Home,numGames$Away), na.rm=T))");
 
+                    engine.Evaluate("cat (\"40%\", \"\n\")");
+
                     // average number of goals scored per game
                     // not equal to sum(ScoreTotal$Goals)/nrow(data) because dropped some teams in the join
                     engine.Evaluate("meanScore <- (sum(data$HomeGoals)+sum(data$AwayGoals))/(nrow(data)*2)");
+
+                    engine.Evaluate("cat (\"50%\", \"\n\")");
 
                     // adjust for how many games each team have played
                     engine.Evaluate("ScoreTotal <- cbind(ScoreTotal, attackstrength=ScoreTotal$Goals/(numGames$numGames*meanScore))");
@@ -89,6 +116,8 @@ namespace GoalsAndCornersPredictions
                     engine.Evaluate("names(ConcedeTotal)<-c(\"Team\",\"Home\",\"Away\")");
                     engine.Evaluate("ConcedeTotal <- data.frame(Team=ConcedeTotal$Team, Goals=rowSums(cbind(ConcedeTotal$Home,ConcedeTotal$Away), na.rm=T))");
 
+                    engine.Evaluate("cat (\"60%\", \"\n\")");
+
                     // avergae conceded is same as average scored!
                     engine.Evaluate("ConcedeTotal <- cbind(ConcedeTotal, defenceweakness=ConcedeTotal$Goals/(numGames$numGames*meanScore))");
 
@@ -98,11 +127,15 @@ namespace GoalsAndCornersPredictions
                     // average number of goals scored away
                     engine.Evaluate("avGoalsA <- mean(data$AwayGoals)");
 
+                    engine.Evaluate("cat (\"70%\", \"\n\")");
+
                     engine.Evaluate("team.names <- unique(ScoreTotal$Team)");
 
                     engine.Evaluate("GoalsH <- GoalsA <- data.frame(Teams=team.names, row.names=team.names)");
                     engine.Evaluate("likelyScore <- likelyProb <- data.frame(Teams=team.names, row.names=team.names)");
                     engine.Evaluate("winH <- winA <- data.frame(Teams=team.names, row.names=team.names)");
+
+                    engine.Evaluate("cat (\"80%\", \"\n\")");
 
                     engine.Evaluate("goals <- 0:5");
                     engine.Evaluate(
@@ -129,11 +162,15 @@ namespace GoalsAndCornersPredictions
 
                     engine.Evaluate("write.csv2(likelyProb, likelyProbFile, row.names=FALSE, sep=\";\",quote=FALSE)");
                     engine.Evaluate("write.csv2(likelyScore, likelyScoreFile, row.names=FALSE, sep=\";\",quote=FALSE)");
+
+                    engine.Evaluate("cat (\"100%\", \"\n\")");
+                    engine.Evaluate("rm(list = ls())");
                 }
 
-                log.Debug("Running process in directory: " + workingDirectory);
-
+                stopWatch.Stop();
+                log.Info("REngine completed in: " + stopWatch.Elapsed.TotalSeconds + " seconds");
                 return true;
+
             }
             catch (Exception ce)
             {

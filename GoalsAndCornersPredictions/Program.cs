@@ -12,6 +12,7 @@ using Db;
 using System.IO;
 using System.Diagnostics;
 using System.Data.Common;
+using System.Threading;
 
 namespace GoalsAndCornersPredictions
 {
@@ -84,9 +85,9 @@ namespace GoalsAndCornersPredictions
                 file.WriteLine("HomeTeam,AwayTeam,HomeGoals,AwayGoals,HomeCorners,AwayCorners");
                 foreach (GameResult game in games)
                 {
-                    
-                        String line = game.homeTeam + "," + game.awayTeam + "," + game.homeGoals + "," + game.awayGoals + "," + 0 + "," + 0;
-                        file.WriteLine(line);
+
+                    String line = game.homeTeam + "," + game.awayTeam + "," + game.homeGoals + "," + game.awayGoals + "," + 0 + "," + 0;
+                    file.WriteLine(line);
                 }
             }
         }
@@ -100,16 +101,21 @@ namespace GoalsAndCornersPredictions
         public CreateInputFileCorners(String workingDirectory, ArrayList games, string team1name, string team2Name)
         {
             String file_name = Path.Combine(workingDirectory, "input.txt");
+
+            log.Info("CreateInputFileCorners --> start");
+
             using (System.IO.StreamWriter file = new System.IO.StreamWriter(file_name, false))
             {
                 // write header
                 file.WriteLine("HomeTeam,AwayTeam,HomeGoals,AwayGoals,HomeCorners,AwayCorners");
                 foreach (GameResult game in games)
                 {
-                      String line = game.homeTeam + "," + game.awayTeam + "," + game.homeCorners + "," + game.awayCorners + "," + 0 + "," + 0;
-                      file.WriteLine(line);
+                    String line = game.homeTeam + "," + game.awayTeam + "," + game.homeCorners + "," + game.awayCorners + "," + 0 + "," + 0;
+                    file.WriteLine(line);
                 }
             }
+
+            log.Info("CreateInputFileCorners --> finish");
         }
     };
 
@@ -139,11 +145,14 @@ namespace GoalsAndCornersPredictions
             log.Info("League Search: " + leagueIds);
 
             //get goals, corners from all games in a league_id
-            dbStuff.RunSQL("SELECT t1.name, t2.name, MAX(s.hg), MAX(s.ag), MAX(s.hco), MAX(s.aco)"
+
+            string sql = "SELECT t1.name, t2.name, MAX(s.hg), MAX(s.ag), MAX(s.hco), MAX(s.aco)"
             + " FROM statistics s, games g, teams t1, teams t2"
             + " WHERE g.league_id in ( "
             + leagueIds
-            + " ) AND s.game_id = g.id AND t1.id = g.team1 AND t2.id = g.team2 GROUP BY s.game_id, t1.name, t2.name;",
+            + " ) AND s.game_id = g.id AND t1.id = g.team1 AND t2.id = g.team2 GROUP BY s.game_id, t1.name, t2.name";
+
+            dbStuff.RunSQL(sql,
                 (dr) =>
                 {
                     GameResult res = new GameResult();
@@ -157,23 +166,22 @@ namespace GoalsAndCornersPredictions
                 }
             );
 
-            log.Debug("Number of games : " + games.Count);
+            log.Info("Number of games : " + games.Count);
 
             String league_day = leagueIds.Replace(",", "_") + "_c_" + DateTime.Today.ToString("ddMMyyyy");
             String path = Path.Combine(GlobalData.Instance.PredictionDir, league_day);
 
-            //create working directory
             if (Directory.Exists(path) == false)
             {
                 Directory.CreateDirectory(path);
-                var file = new CreateInputFileCorners(path, games, team1Name, team2Name);
+                var file = new CreateInputFileGoals(path, games, team1Name, team2Name);
                 //RExecutor r = new RExecutor(path);
                 if (RNETExecutor.Execute(path) == false)
                 {
                     return "R-Engine failed";
                 }
             }
-            
+
             //read data back
             var winH = PredictionReader.Read(dbStuff, Path.Combine(path, "winH.csv"));
             var winA = PredictionReader.Read(dbStuff, Path.Combine(path, "winA.csv"));
@@ -200,17 +208,52 @@ namespace GoalsAndCornersPredictions
                 try
                 {
                     row.gameId = gameId;
-                    var winHomeResults = winH.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                    row.winHome = winHomeResults.Count() != 0 ? winHomeResults.First().probability : "-1";
+                    bool a1Finished = false;
+                    bool a2Finished = false;
+                    bool a3Finished = false;
+                    bool a4Finished = false;
 
-                    var winAwayResults = winA.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                    row.winAway = winAwayResults.Count() != 0 ? winAwayResults.First().probability : "-1";
+                    Action a1 = () =>
+                    {
+                        var winHomeResults = winH.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
+                        row.winHome = winHomeResults.Count() != 0 ? winHomeResults.First().probability : "-1";
+                        a1Finished = true;
+                    };
 
-                    var likelyProbResults = likelyProb.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                    row.likelyProb = likelyProbResults.Count() != 0 ? likelyProbResults.First().probability : "-1";
+                    Action a2 = () =>
+                    {
+                        var winAwayResults = winA.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
+                        row.winAway = winAwayResults.Count() != 0 ? winAwayResults.First().probability : "-1";
+                        a2Finished = true;
+                    };
 
-                    var likelyScoreResults = likelyScore.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                    row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
+                    Action a3 = () =>
+                    {
+                        var likelyProbResults = likelyProb.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
+                        row.likelyProb = likelyProbResults.Count() != 0 ? likelyProbResults.First().probability : "-1";
+                        a3Finished = true;
+                    };
+
+                    Action a4 = () =>
+                    {
+                        var likelyScoreResults = likelyScore.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
+                        row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
+                        a4Finished = true;
+                    };
+
+                    a1.Invoke();
+                    a2.Invoke();
+                    a3.Invoke();
+                    a4.Invoke();
+
+                    while (a1Finished == false ||
+                           a2Finished == false ||
+                           a3Finished == false ||
+                           a4Finished == false)
+                    {
+                        log.Info("Waiting for actions to complete...");
+                        System.Threading.Thread.Sleep(2000);
+                    }
 
                     if (row.winHome == "-1") { var msg = "WARNING! Failed to calulate corners win home probabilty for " + gameId; log.Warn(msg); return msg; }
                     if (row.winAway == "-1") { var msg = "WARNING! Failed to calulate corners win away probabilty for " + gameId; log.Warn(msg); return msg; }
@@ -369,17 +412,52 @@ namespace GoalsAndCornersPredictions
             try
             {
                 row.gameId = gameId;
-                var winHomeResults = winH.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                row.winHome = winHomeResults.Count() != 0 ? winHomeResults.First().probability : "-1";
+                bool a1Finished = false;
+                bool a2Finished = false;
+                bool a3Finished = false;
+                bool a4Finished = false;
 
-                var winAwayResults = winA.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                row.winAway = winAwayResults.Count() != 0 ? winAwayResults.First().probability : "-1";
+                Action a1 = () =>
+                {
+                    var winHomeResults = winH.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
+                    row.winHome = winHomeResults.Count() != 0 ? winHomeResults.First().probability : "-1";
+                    a1Finished = true;
+                };
 
-                var likelyProbResults = likelyProb.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                row.likelyProb = likelyProbResults.Count() != 0 ? likelyProbResults.First().probability : "-1";
+                Action a2 = () =>
+                {
+                    var winAwayResults = winA.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
+                    row.winAway = winAwayResults.Count() != 0 ? winAwayResults.First().probability : "-1";
+                    a2Finished = true;
+                };
 
-                var likelyScoreResults = likelyScore.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
+                Action a3 = () =>
+                {
+                    var likelyProbResults = likelyProb.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
+                    row.likelyProb = likelyProbResults.Count() != 0 ? likelyProbResults.First().probability : "-1";
+                    a3Finished = true;
+                };
+
+                Action a4 = () =>
+                {
+                    var likelyScoreResults = likelyScore.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
+                    row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
+                    a4Finished = true;
+                };
+
+                a1.Invoke();
+                a2.Invoke();
+                a3.Invoke();
+                a4.Invoke();
+
+                while (a1Finished == false ||
+                       a2Finished == false ||
+                       a3Finished == false ||
+                       a4Finished == false)
+                {
+                    log.Info("Waiting for actions to complete...");
+                    System.Threading.Thread.Sleep(2000);
+                }
 
                 if (row.winHome == "-1") { var msg = "WARNING! Failed to calulate goals win home probabilty for " + gameId; log.Warn(msg); return msg; }
                 if (row.winAway == "-1") { var msg = "WARNING! Failed to calulate goals win away probabilty for " + gameId; log.Warn(msg); return msg; }
