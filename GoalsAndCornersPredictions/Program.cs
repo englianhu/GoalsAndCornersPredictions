@@ -241,10 +241,10 @@ namespace GoalsAndCornersPredictions
                         a4Finished = true;
                     };
 
-                    a1.Invoke();
-                    a2.Invoke();
-                    a3.Invoke();
-                    a4.Invoke();
+                    a1.BeginInvoke(null, this);
+                    a2.BeginInvoke(null, this);
+                    a3.BeginInvoke(null, this);
+                    a4.BeginInvoke(null, this);
 
                     while (a1Finished == false ||
                            a2Finished == false ||
@@ -302,33 +302,33 @@ namespace GoalsAndCornersPredictions
             string team1LeaguesSQL = "select distinct league_id from games where team1 = " + team1Id + " or team2 = " + team1Id + " and league_id != -1";
             string team2LeaguesSQL = "select distinct league_id from games where team1 = " + team2Id + " or team2 = " + team2Id + " and league_id != -1";
 
-            //var team1Leagues = dbStuff.OneColumnQuery(team1LeaguesSQL);
-            //var team2Leagues = dbStuff.OneColumnQuery(team2LeaguesSQL);
+            var team1Leagues = dbStuff.OneColumnQuery(team1LeaguesSQL);
+            var team2Leagues = dbStuff.OneColumnQuery(team2LeaguesSQL);
 
-            //var common = team1Leagues.Intersect(team2Leagues).ToList();
+            var common = team1Leagues.Intersect(team2Leagues).ToList();
 
-            //if (common.Count() != 0)
-            //{
-            //    var gamesCount = 0;
-            //    for (var i = 0; i < common.Count(); ++i)
-            //    {
-            //       dbStuff.RunSQL("select count(*) from games where league_id = " + common[i],
-            //       (dr) =>
-            //       {
-            //           gamesCount += int.Parse(dr[0].ToString());
-            //       });
+            if (common.Count() != 0)
+            {
+                var gamesCount = 0;
+                for (var i = 0; i < common.Count(); ++i)
+                {
+                    dbStuff.RunSQL("select count(*) from games where league_id = " + common[i],
+                    (dr) =>
+                    {
+                        gamesCount += int.Parse(dr[0].ToString());
+                    });
 
-            //       if (gamesCount > 300)
-            //       {
-            //           log.Warn("Game Count too deep: " + gamesCount);
-            //           log.Warn("Removing league id: " + common[i]);
-            //           common.RemoveAt(i);
-            //       }
-            //    }
+                    if (gamesCount > 1000)
+                    {
+                        log.Warn("Game Count too deep: " + gamesCount);
+                        log.Warn("Removing league id: " + common[i]);
+                        common.RemoveAt(i);
+                    }
+                }
 
-            //    leagueIds = String.Join(",", common);
-            //}
-            //else
+                leagueIds = String.Join(",", common);
+            }
+            else
             {
                 //get league id
                 dbStuff.RunSQL("SELECT league_id FROM games WHERE id = " + gameId + ";",
@@ -445,10 +445,10 @@ namespace GoalsAndCornersPredictions
                     a4Finished = true;
                 };
 
-                a1.Invoke();
-                a2.Invoke();
-                a3.Invoke();
-                a4.Invoke();
+                a1.BeginInvoke(null, this);
+                a2.BeginInvoke(null, this);
+                a3.BeginInvoke(null, this);
+                a4.BeginInvoke(null, this);
 
                 while (a1Finished == false ||
                        a2Finished == false ||
