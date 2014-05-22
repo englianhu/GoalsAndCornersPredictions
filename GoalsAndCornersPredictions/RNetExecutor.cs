@@ -15,12 +15,14 @@ namespace GoalsAndCornersPredictions
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         static REngine engine = null;
-        public static bool Execute(String workingDirectory)
+        public static bool Execute(String workingDirectory, PredictionType predType)
         {
             log.Info("RNETExecutor --------->");
 
             var envPath = Environment.GetEnvironmentVariable("PATH");
+            //var rBinPath = @"C:\Users\kate\Documents\R\R-3.0.3\bin\x64";
             var rBinPath = @"C:\Program Files\R\R-3.0.3\bin\x64";
+            
             Environment.SetEnvironmentVariable("PATH", envPath + Path.PathSeparator + rBinPath);
 
             var rDllPath = Path.Combine(rBinPath, "R.dll");
@@ -137,7 +139,15 @@ namespace GoalsAndCornersPredictions
 
                     engine.Evaluate("cat (\"80%\", \"\n\")");
 
-                    engine.Evaluate("goals <- 0:5");
+                    if (predType == PredictionType.corner)
+                    {
+                        engine.Evaluate("goals <- 0:14");
+                    }
+                    else
+                    {
+                        engine.Evaluate("goals <- 0:5");
+                    }
+
                     engine.Evaluate(
                     "for (HomeTeam in team.names){" + Environment.NewLine +
                       "cat (HomeTeam, \"\n\")" + Environment.NewLine +
