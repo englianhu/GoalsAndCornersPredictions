@@ -12,14 +12,22 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public RExecutor(String workingDirectory)
+        public bool Execute(String workingDirectory, PredictionType predType)
         {
             log.Debug("Running process in directory: " + workingDirectory);
             //TODO: either use PATH env. or configurable full path
             ProcessStartInfo si = new ProcessStartInfo();
             si.FileName = GlobalData.Instance.RexecutableFullPath;
             //si.Arguments = "CMD BATCH " + GlobalData.Instance.ScriptFullPath;
-            si.Arguments = @"CMD BATCH C:\Users\daddy\Documents\GitHub\GoalsAndCornersPredictions\GoalsAndCornersPredictions\script.R";
+            if (predType == PredictionType.corner)
+            {
+                si.Arguments = @"CMD BATCH C:\Users\daddy\Documents\GitHub\GoalsAndCornersPredictions\GoalsAndCornersPredictions\scriptCorners.R";
+            }
+            else
+            {
+                si.Arguments = @"CMD BATCH C:\Users\daddy\Documents\GitHub\GoalsAndCornersPredictions\GoalsAndCornersPredictions\scriptGoals.R";
+            }
+
             si.WorkingDirectory = workingDirectory;
             si.UseShellExecute = true;
             si.CreateNoWindow = true;
@@ -66,6 +74,8 @@ namespace GoalsAndCornersPredictions
             {
                 log.Error("Error executing process exception: " + e);
             }
+
+            return false;
         }
 
         void processExited(object sender, EventArgs e)

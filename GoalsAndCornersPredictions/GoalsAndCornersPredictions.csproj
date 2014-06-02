@@ -121,6 +121,8 @@
     <None Include="packages.config" />
     <None Include="Properties\app.manifest" />
     <None Include="script.R" />
+    <None Include="scriptCorners.R" />
+    <None Include="scriptGoals.R" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.5">
