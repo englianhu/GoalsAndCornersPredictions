@@ -12,20 +12,29 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public bool Execute(String workingDirectory, PredictionType predType)
+        protected PredictionType predType;
+
+        protected string rBinPath = @"C:\Program Files\R\R-3.0.2\bin\x64";
+
+        public RExecutor(PredictionType predType)
+        {
+            this.predType = predType;
+        }
+
+        public virtual bool Execute(String workingDirectory)
         {
             log.Debug("Running process in directory: " + workingDirectory);
-            //TODO: either use PATH env. or configurable full path
+
             ProcessStartInfo si = new ProcessStartInfo();
             si.FileName = GlobalData.Instance.RexecutableFullPath;
-            //si.Arguments = "CMD BATCH " + GlobalData.Instance.ScriptFullPath;
+
             if (predType == PredictionType.corner)
             {
-                si.Arguments = @"CMD BATCH C:\Users\daddy\Documents\GitHub\GoalsAndCornersPredictions\GoalsAndCornersPredictions\scriptCorners.R";
+                si.Arguments = @"CMD BATCH " + GlobalData.Instance.GoalsScriptFullPath;
             }
             else
             {
-                si.Arguments = @"CMD BATCH C:\Users\daddy\Documents\GitHub\GoalsAndCornersPredictions\GoalsAndCornersPredictions\scriptGoals.R";
+                si.Arguments = @"CMD BATCH " + GlobalData.Instance.CornersScriptFullPath;
             }
 
             si.WorkingDirectory = workingDirectory;
@@ -58,7 +67,7 @@ namespace GoalsAndCornersPredictions
 
                         var rProcesses = Process.GetProcesses().ToArray().ToList().Select(x => x.MainWindowTitle);
 
-                        if (rProcesses.Any(y => y.Equals("C:\\Program Files\\R\\R-3.0.3\\bin\\x64\\R.exe")) == false)
+                        if (rProcesses.Any(y => y.Equals(GlobalData.Instance.RexecutableFullPath)) == false)
                         {
                             log.Warn("Looks like R has crashed, exitting...");
                             break;

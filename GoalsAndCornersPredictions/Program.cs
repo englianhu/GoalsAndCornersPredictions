@@ -46,6 +46,9 @@ namespace GoalsAndCornersPredictions
         public string PredictionDir { get; set; }
         public string RexecutableFullPath { get; set; }
         public string ScriptFullPath { get; set; }
+        public string GoalsScriptFullPath = @"D:\scriptCorners.R";
+        public string CornersScriptFullPath = @"D:\scriptGoals.R";
+        public string BiVariateScriptFullPath = @"D:\script_bivariate.R";
 
         private GlobalData() { }
 
@@ -81,12 +84,17 @@ namespace GoalsAndCornersPredictions
         public string awayCorners;
     };
 
-    public class CreateInputFileGoals
+    public abstract class CreateInputFile
+    {
+        public abstract void Create(String workingDirectory, ArrayList games);
+    }
+
+    public class CreateInputFileGoals : CreateInputFile
     {
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public CreateInputFileGoals(String workingDirectory, ArrayList games, string team1name, string team2Name)
+        public override void Create(String workingDirectory, ArrayList games)
         {
             String file_name = Path.Combine(workingDirectory, "input.txt");
             using (System.IO.StreamWriter file = new System.IO.StreamWriter(file_name, false))
@@ -95,7 +103,6 @@ namespace GoalsAndCornersPredictions
                 file.WriteLine("HomeTeam,AwayTeam,HomeGoals,AwayGoals,HomeCorners,AwayCorners");
                 foreach (GameResult game in games)
                 {
-
                     String line = game.homeTeam + "," + game.awayTeam + "," + game.homeGoals + "," + game.awayGoals + "," + 0 + "," + 0;
                     file.WriteLine(line);
                 }
@@ -104,12 +111,12 @@ namespace GoalsAndCornersPredictions
         }
     };
 
-    public class CreateInputFileCorners
+    public class CreateInputFileCorners : CreateInputFile
     {
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public CreateInputFileCorners(String workingDirectory, ArrayList games, string team1name, string team2Name)
+        public override void Create(String workingDirectory, ArrayList games)
         {
             String file_name = Path.Combine(workingDirectory, "input.txt");
 
@@ -138,224 +145,25 @@ namespace GoalsAndCornersPredictions
         corner
     };
 
-    public class Service : IService
+    public class ServiceCommon
     {
         private static readonly log4net.ILog log
-           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+          = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        Database dbStuff;
-        static object myLock;
-        List<string> naughtyLeagues = null;
+        protected Database dbStuff;
+        protected List<string> naughtyLeagues = null;
 
-        Service()
+        public ServiceCommon()
         {
             GlobalData gd = GlobalData.Instance;
             dbStuff = gd.dbStuff;
-            myLock = new Object();
 
             naughtyLeagues = dbStuff.OneColumnQuery("select id from leagues where name like '%Friendl%';");
             naughtyLeagues.Add("-1");
 
             naughtyLeagues.ForEach(x =>
-            Console.WriteLine("naughty leagues --> " + x)
-            );
+            Console.WriteLine("naughty leagues --> " + x));
         }
-
-        public string GetCornersPrediction(string gameId)
-        {
-            return GetCornersPredictionWithDepth(gameId, 0);
-        }
-
-        public string GetCornersPredictionWithDepth(string gameId, int depth)
-        {
-            String path = "";
-
-            var gameDetails = GetGameDetails(gameId);
-            var team1Name = gameDetails.Split('|').ElementAt(0);
-            var team2Name = gameDetails.Split('|').ElementAt(1);
-
-            log.Info("GetCornersPrediction is being invoked for: " + gameDetails);
-            log.Info("This pointer = " + this);
-
-            ArrayList games = new ArrayList();
-            string leagueIds = GetLeagueIDs(gameId, depth);
-
-            if (leagueIds != null)
-            {
-                log.Info("League Search: " + leagueIds);
-
-                //get goals, corners from all games in a league_id
-
-                string sql = "SELECT t1.name, t2.name, MAX(s.hg), MAX(s.ag), MAX(s.hco), MAX(s.aco)"
-                + " FROM statistics s, games g, teams t1, teams t2"
-                + " WHERE g.league_id in ( "
-                + leagueIds
-                + " ) AND s.game_id = g.id AND t1.id = g.team1 AND t2.id = g.team2 GROUP BY s.game_id, t1.name, t2.name";
-
-                dbStuff.RunSQL(sql,
-                    (dr) =>
-                    {
-                        GameResult res = new GameResult();
-                        res.homeTeam = dr[0].ToString();
-                        res.awayTeam = dr[1].ToString();
-                        res.homeGoals = dr[2].ToString();
-                        res.awayGoals = dr[3].ToString();
-                        res.homeCorners = dr[4].ToString();
-                        res.awayCorners = dr[5].ToString();
-                        games.Add(res);
-                    }
-                );
-
-                log.Info("Number of games : " + games.Count);
-
-                var uuid = System.Guid.NewGuid().ToString();
-
-                //String league_day = leagueIds.Replace(",", "_") + "_c_" + DateTime.Today.ToString("ddMMyyyy");
-                String league_day = uuid.Substring(0, 8) + "_c_" + DateTime.Today.ToString("ddMMyyyy");
-
-                path = Path.Combine(GlobalData.Instance.PredictionDir, league_day);
-
-                if (Directory.Exists(path) == false)
-                {
-                    Directory.CreateDirectory(path);
-                    var file = new CreateInputFileCorners(path, games, team1Name, team2Name);
-                    //RExecutor r = new RExecutor(path);
-
-                    var tokenSource = new CancellationTokenSource();
-                    CancellationToken token = tokenSource.Token;
-                    int timeOut = 180000;
-
-                    var task = Task.Factory.StartNew(() => RNETExecutor.Execute(path, PredictionType.corner), token);
-
-                    if (!task.Wait(timeOut, token))
-                        Console.WriteLine("The Task timed out!");
-
-                    //if (RNETExecutor.Execute(path, PredictionType.corner) == false)
-                    //{
-                    //    return "R-Engine failed";
-                    //}
-                }
-
-                if (File.Exists(Path.Combine(path, "winH.csv")) &&
-                   File.Exists(Path.Combine(path, "winA.csv")) &&
-                   File.Exists(Path.Combine(path, "likelyScore.csv")) &&
-                   File.Exists(Path.Combine(path, "likelyProb.csv")))
-                {
-                    //read data back
-                    var winH = PredictionReader.Read(dbStuff, Path.Combine(path, "winH.csv"));
-                    var winA = PredictionReader.Read(dbStuff, Path.Combine(path, "winA.csv"));
-                    var likelyScore = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyScore.csv"));
-                    var likelyProb = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyProb.csv"));
-
-                    log.Info(String.Format("winH = {0} && winA = {1} && likelyScore = {2} && likelyProb = {3}", winH != null, winA != null, likelyScore != null, likelyProb != null));
-
-                    if (winH != null && winA != null && likelyProb != null && likelyProb != null)
-                    {
-                        int team1 = -1;
-                        int team2 = -1;
-
-                        dbStuff.RunSQL("SELECT team1, team2 FROM games WHERE id = " + gameId + ";",
-                            (dr) =>
-                            {
-                                team1 = int.Parse(dr[0].ToString());
-                                team2 = int.Parse(dr[1].ToString());
-                            }
-                        );
-
-                        log.Info("Game: " + gameId + " team1: " + team1 + " team2: " + team2);
-
-                        PredRow row = new PredRow();
-
-                        try
-                        {
-                            row.gameId = gameId;
-                            bool a1Finished = false;
-                            bool a2Finished = false;
-                            bool a3Finished = false;
-                            bool a4Finished = false;
-
-                            log.Info("A1 winH contains: " + winH.Count());
-                            log.Info("A2 winA contains: " + winA.Count());
-                            log.Info("A3 likelyProb contains: " + likelyProb.Count());
-                            log.Info("A4 likelyScore contains: " + likelyScore.Count());
-
-                            Action a1 = () =>
-                            {
-                                var winHomeResults = winH.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                row.winHome = winHomeResults.Count() != 0 ? winHomeResults.First().probability : "-1";
-                                a1Finished = true;
-                            };
-
-                            Action a2 = () =>
-                            {
-                                var winAwayResults = winA.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                row.winAway = winAwayResults.Count() != 0 ? winAwayResults.First().probability : "-1";
-                                a2Finished = true;
-                            };
-
-                            Action a3 = () =>
-                            {
-                                var likelyProbResults = likelyProb.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                row.likelyProb = likelyProbResults.Count() != 0 ? likelyProbResults.First().probability : "-1";
-                                a3Finished = true;
-                            };
-
-                            Action a4 = () =>
-                            {
-                                var likelyScoreResults = likelyScore.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
-                                a4Finished = true;
-                            };
-
-                            a1.BeginInvoke(null, this);
-                            a2.BeginInvoke(null, this);
-                            a3.BeginInvoke(null, this);
-                            a4.BeginInvoke(null, this);
-
-                            while (a1Finished == false ||
-                                   a2Finished == false ||
-                                   a3Finished == false ||
-                                   a4Finished == false)
-                            {
-                                log.Info(string.Format("Waiting for actions to complete...{0}-{1}-{2}-{3}", a1Finished, a2Finished, a3Finished, a4Finished));
-                                System.Threading.Thread.Sleep(2000);
-                            }
-
-                            log.Info(string.Format("Actions completed...{0}-{1}-{2}-{3}", a1Finished, a2Finished, a3Finished, a4Finished));
-
-                            if (row.winHome == "-1") { var msg = "WARNING! Failed to calulate corners win home probabilty for " + gameId; log.Warn(msg); return msg; }
-                            if (row.winAway == "-1") { var msg = "WARNING! Failed to calulate corners win away probabilty for " + gameId; log.Warn(msg); return msg; }
-                            if (row.likelyProb == "-1") { var msg = "WARNING! Failed to calulate corners likely probabilty for " + gameId; log.Warn(msg); return msg; }
-                            if (row.likelyScore == "-1") { var msg = "WARNING! Failed to calulate corners likely score for " + gameId; log.Warn(msg); return msg; }
-                        }
-                        catch (Exception e)
-                        {
-                            log.Warn("Exception caught while getting match pr6edictions for game: " + gameId + " exception: " + e);
-                        }
-
-                        var result = JsonConvert.SerializeObject(row, Formatting.Indented);
-                        log.Info("Result:");
-                        log.Info(result);
-
-                        return result;
-                    }
-
-                    else
-                    {
-                        return "PredictionReader failed - null league";
-                    }
-                }
-                else
-                {
-                    return "PredictionReader failed";
-                }
-            }
-            else
-            {
-                return "R failed";
-            }
-        }
-
 
         public string GetGameDetails(string id)
         {
@@ -369,10 +177,13 @@ namespace GoalsAndCornersPredictions
                   retVal = dr[1].ToString() + "|" + dr[2].ToString() + "|" + dr[3].ToString() + "|" + dr[4].ToString();
               });
 
+            log.Info("GetGoalsPrediction is being invoked for: " + retVal);
+            log.Info("This pointer = " + this);
+
             return retVal;
         }
 
-        private string GetLeagueIDs(string gameId, int depth = 0)
+        public string GetLeagueIDs(string gameId, int depth = 0)
         {
             string leagueIds = null;
 
@@ -440,401 +251,51 @@ namespace GoalsAndCornersPredictions
                 }
             }
 
+            if (leagueIds == null) throw new Exception("R failed");
+
+            log.Info("League Search: " + leagueIds);
+
             return leagueIds;
+        }
+    }
+
+
+    public class Service : IService
+    {
+        private static readonly log4net.ILog log
+           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        GoalsPredictions goalsPrediction = new GoalsPredictions(new Configuration("_g_", new CreateInputFileGoals(), new RNETExecutor(PredictionType.goal)));
+        GoalsPredictions cornersPrediction = new GoalsPredictions(new Configuration("_c_", new CreateInputFileCorners(), new RNETExecutor(PredictionType.corner)));
+        GoalsPredictions goalsBiVarPrediction = new GoalsPredictions(new Configuration("_g_", new CreateInputFileGoals(), new RNetBiVariateExecutor(PredictionType.goal)));
+
+        Service()
+        {
+        }
+
+        public string GetCornersPrediction(string gameId)
+        {
+            return cornersPrediction.execute(gameId, 0);
+        }
+
+        public string GetCornersPredictionWithDepth(string gameId, int depth)
+        {
+            return cornersPrediction.execute(gameId, depth);
         }
 
         public string GetGoalsPrediction(string gameId)
         {
-            return GetGoalsPredictionWithDepth(gameId, 0);
+            return goalsPrediction.execute(gameId, 0);
         }
 
         public string GetGoalsPredictionWithDepth(string gameId, int depth)
         {
-            string path = "";
-
-            try
-            {
-                var gameDetails = GetGameDetails(gameId);
-                var team1Name = gameDetails.Split('|').ElementAt(0);
-                var team2Name = gameDetails.Split('|').ElementAt(1);
-
-                log.Info("GetGoalsPrediction is being invoked for: " + gameDetails);
-                log.Info("This pointer = " + this);
-                ArrayList games = new ArrayList();
-
-                string leagueIds = GetLeagueIDs(gameId, depth);
-
-                if (leagueIds != null)
-                {
-                    log.Info("League Search: " + leagueIds);
-
-                    string sql = "SELECT t1.name, t2.name, MAX(s.hg), MAX(s.ag), MAX(s.hco), MAX(s.aco)"
-                    + " FROM statistics s, games g, teams t1, teams t2"
-                    + " WHERE g.league_id in ( "
-                    + leagueIds
-                    + " ) AND s.game_id = g.id AND t1.id = g.team1 AND t2.id = g.team2 GROUP BY s.game_id, t1.name, t2.name;";
-
-                    //get goals, corners from all games in a league_id
-                    dbStuff.RunSQL(sql,
-                        (dr) =>
-                        {
-                            GameResult res = new GameResult();
-                            res.homeTeam = dr[0].ToString();
-                            res.awayTeam = dr[1].ToString();
-                            res.homeGoals = dr[2].ToString();
-                            res.awayGoals = dr[3].ToString();
-                            res.homeCorners = dr[4].ToString();
-                            res.awayCorners = dr[4].ToString();
-                            games.Add(res);
-                        }
-                    );
-
-                    log.Debug("Number of games : " + games.Count);
-
-                    var uuid = System.Guid.NewGuid().ToString();
-
-                    //String league_day = leagueIds.Replace(",", "_") + "_g_" + DateTime.Today.ToString("ddMMyyyy");
-                    String league_day = uuid.Substring(0, 8) + "_g_" + DateTime.Today.ToString("ddMMyyyy");
-                    path = Path.Combine(GlobalData.Instance.PredictionDir, league_day);
-
-                    if (Directory.Exists(path) == false)
-                    {
-                        Directory.CreateDirectory(path);
-                        var file = new CreateInputFileGoals(path, games, team1Name, team2Name);
-
-                        var tokenSource = new CancellationTokenSource();
-                        CancellationToken token = tokenSource.Token;
-                        int timeOut = 180000;
-
-                        var task = Task.Factory.StartNew(() => RNETExecutor.Execute(path, PredictionType.goal), token);
-
-                        if (!task.Wait(timeOut, token))
-                            Console.WriteLine("The Task timed out!");
-
-                        //RExecutor r = new RExecutor(path);
-                        //if (RNETExecutor.Execute(path, PredictionType.goal) == false)
-                        //{
-                        //    return "R-Engine failed";
-                        //}
-                    }
-
-                    //read data back
-                    if (File.Exists(Path.Combine(path, "winH.csv")) &&
-                   File.Exists(Path.Combine(path, "winA.csv")) &&
-                   File.Exists(Path.Combine(path, "likelyScore.csv")) &&
-                   File.Exists(Path.Combine(path, "likelyProb.csv")))
-                    {
-
-                        var winH = PredictionReader.Read(dbStuff, Path.Combine(path, "winH.csv"));
-                        var winA = PredictionReader.Read(dbStuff, Path.Combine(path, "winA.csv"));
-                        var likelyScore = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyScore.csv"));
-                        var likelyProb = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyProb.csv"));
-
-                        int team1 = -1;
-                        int team2 = -1;
-
-                        dbStuff.RunSQL("SELECT team1, team2 FROM games WHERE id = " + gameId + ";",
-                            (dr) =>
-                            {
-                                team1 = int.Parse(dr[0].ToString());
-                                team2 = int.Parse(dr[1].ToString());
-                            }
-                        );
-
-                        log.Info("Game: " + gameId + " team1: " + team1 + " team2: " + team2);
-
-                        PredRow row = new PredRow();
-
-                        log.Info(String.Format("winH = {0} && winA = {1} && likelyScore = {2} && likelyProb = {3}", winH != null, winA != null, likelyScore != null, likelyProb != null));
-
-                        if (winH != null && winA != null && likelyScore != null && likelyProb != null)
-                        {
-                            try
-                            {
-                                row.gameId = gameId;
-                                bool a1Finished = false;
-                                bool a2Finished = false;
-                                bool a3Finished = false;
-                                bool a4Finished = false;
-
-                                log.Info("A1 winH contains: " + winH.Count());
-                                log.Info("A2 winA contains: " + winA.Count());
-                                log.Info("A3 likelyProb contains: " + likelyProb.Count());
-                                log.Info("A4 likelyScore contains: " + likelyScore.Count());
-
-                                Action a1 = () =>
-                                {
-                                    var winHomeResults = winH.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                    row.winHome = winHomeResults.Count() != 0 ? winHomeResults.First().probability : "-1";
-                                    a1Finished = true;
-                                };
-
-                                Action a2 = () =>
-                                {
-                                    var winAwayResults = winA.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                    row.winAway = winAwayResults.Count() != 0 ? winAwayResults.First().probability : "-1";
-                                    a2Finished = true;
-                                };
-
-                                Action a3 = () =>
-                                {
-                                    var likelyProbResults = likelyProb.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                    row.likelyProb = likelyProbResults.Count() != 0 ? likelyProbResults.First().probability : "-1";
-                                    a3Finished = true;
-                                };
-
-                                Action a4 = () =>
-                                {
-                                    var likelyScoreResults = likelyScore.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                    row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
-                                    a4Finished = true;
-                                };
-
-                                a1.BeginInvoke(null, this);
-                                a2.BeginInvoke(null, this);
-                                a3.BeginInvoke(null, this);
-                                a4.BeginInvoke(null, this);
-
-                                while (a1Finished == false ||
-                                       a2Finished == false ||
-                                       a3Finished == false ||
-                                       a4Finished == false)
-                                {
-                                    log.Info(string.Format("Waiting for actions to complete...{0}-{1}-{2}-{3}", a1Finished, a2Finished, a3Finished, a4Finished));
-                                    System.Threading.Thread.Sleep(2000);
-                                }
-
-                                log.Info(string.Format("Actions completed...{0}-{1}-{2}-{3}", a1Finished, a2Finished, a3Finished, a4Finished));
-
-                                if (row.winHome == "-1") { var msg = "WARNING! Failed to calulate goals win home probabilty for " + gameId; log.Warn(msg); return msg; }
-                                if (row.winAway == "-1") { var msg = "WARNING! Failed to calulate goals win away probabilty for " + gameId; log.Warn(msg); return msg; }
-                                if (row.likelyProb == "-1") { var msg = "WARNING! Failed to calulate goals likely probabilty for " + gameId; log.Warn(msg); return msg; }
-                                if (row.likelyScore == "-1") { var msg = "WARNING! Failed to calulate goals likely score for " + gameId; log.Warn(msg); return msg; }
-                            }
-                            catch (Exception e)
-                            {
-                                log.Warn("Exception caught while getting match predictions for game: " + gameId + " exception: " + e);
-                            }
-
-                            var result = JsonConvert.SerializeObject(row, Formatting.Indented);
-                            log.Info("Result:");
-                            log.Info(result);
-
-                            return result;
-                        }
-                        else
-                        {
-                            return "PredictionReader failed - null league";
-                        }
-                    }
-                    else
-                    {
-                        return "PredictionReader failed";
-                    }
-                }
-                else
-                {
-                    return "R failed";
-                }
-            }
-            catch (Exception ce)
-            {
-                return "Big exception " + ce;
-            }
+            return goalsPrediction.execute(gameId, depth);
         }
 
         public string GetGoalsBiVarPrediction(string gameId)
         {
-            string path = "";
-
-            try
-            {
-                var gameDetails = GetGameDetails(gameId);
-                var team1Name = gameDetails.Split('|').ElementAt(0);
-                var team2Name = gameDetails.Split('|').ElementAt(1);
-
-                log.Info("GetGoalsPrediction is being invoked for: " + gameDetails);
-                log.Info("This pointer = " + this);
-                ArrayList games = new ArrayList();
-
-                string leagueIds = GetLeagueIDs(gameId, 0);
-
-                if (leagueIds != null)
-                {
-                    log.Info("League Search: " + leagueIds);
-
-                    string sql = "SELECT t1.name, t2.name, MAX(s.hg), MAX(s.ag), MAX(s.hco), MAX(s.aco)"
-                    + " FROM statistics s, games g, teams t1, teams t2"
-                    + " WHERE g.league_id in ( "
-                    + leagueIds
-                    + " ) AND s.game_id = g.id AND t1.id = g.team1 AND t2.id = g.team2 GROUP BY s.game_id, t1.name, t2.name;";
-
-                    //get goals, corners from all games in a league_id
-                    dbStuff.RunSQL(sql,
-                        (dr) =>
-                        {
-                            GameResult res = new GameResult();
-                            res.homeTeam = dr[0].ToString();
-                            res.awayTeam = dr[1].ToString();
-                            res.homeGoals = dr[2].ToString();
-                            res.awayGoals = dr[3].ToString();
-                            res.homeCorners = dr[4].ToString();
-                            res.awayCorners = dr[4].ToString();
-                            games.Add(res);
-                        }
-                    );
-
-                    log.Debug("Number of games : " + games.Count);
-
-                    var uuid = System.Guid.NewGuid().ToString();
-
-                    //String league_day = leagueIds.Replace(",", "_") + "_g_" + DateTime.Today.ToString("ddMMyyyy");
-                    String league_day = uuid.Substring(0, 8) + "_g_" + DateTime.Today.ToString("ddMMyyyy");
-                    path = Path.Combine(GlobalData.Instance.PredictionDir, league_day);
-
-                    if (Directory.Exists(path) == false)
-                    {
-                        Directory.CreateDirectory(path);
-                        var file = new CreateInputFileGoals(path, games, team1Name, team2Name);
-
-                        var tokenSource = new CancellationTokenSource();
-                        CancellationToken token = tokenSource.Token;
-                        int timeOut = 180000;
-
-                        //var task = Task.Factory.StartNew(() => RNETExecutor.Execute(path, PredictionType.goal), token);
-
-                        //if (!task.Wait(timeOut, token))
-                        //    Console.WriteLine("The Task timed out!");
-
-                        if (RNetBiVariateExecutor.Execute(path, PredictionType.goal) == false)
-                        {
-                            return "R-Engine failed";
-                        }
-                    }
-
-                    //read data back
-                    if (File.Exists(Path.Combine(path, "winH.csv")) &&
-                   File.Exists(Path.Combine(path, "winA.csv")) &&
-                   File.Exists(Path.Combine(path, "likelyScore.csv")) &&
-                   File.Exists(Path.Combine(path, "likelyProb.csv")))
-                    {
-
-                        var winH = PredictionReader.Read(dbStuff, Path.Combine(path, "winH.csv"));
-                        var winA = PredictionReader.Read(dbStuff, Path.Combine(path, "winA.csv"));
-                        var likelyScore = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyScore.csv"));
-                        var likelyProb = PredictionReader.Read(dbStuff, Path.Combine(path, "likelyProb.csv"));
-
-                        int team1 = -1;
-                        int team2 = -1;
-
-                        dbStuff.RunSQL("SELECT team1, team2 FROM games WHERE id = " + gameId + ";",
-                            (dr) =>
-                            {
-                                team1 = int.Parse(dr[0].ToString());
-                                team2 = int.Parse(dr[1].ToString());
-                            }
-                        );
-
-                        log.Info("Game: " + gameId + " team1: " + team1 + " team2: " + team2);
-
-                        PredRow row = new PredRow();
-
-                        log.Info(String.Format("winH = {0} && winA = {1} && likelyScore = {2} && likelyProb = {3}", winH != null, winA != null, likelyScore != null, likelyProb != null));
-
-                        if (winH != null && winA != null && likelyScore != null && likelyProb != null)
-                        {
-                            try
-                            {
-                                row.gameId = gameId;
-                                bool a1Finished = false;
-                                bool a2Finished = false;
-                                bool a3Finished = false;
-                                bool a4Finished = false;
-
-                                log.Info("A1 winH contains: " + winH.Count());
-                                log.Info("A2 winA contains: " + winA.Count());
-                                log.Info("A3 likelyProb contains: " + likelyProb.Count());
-                                log.Info("A4 likelyScore contains: " + likelyScore.Count());
-
-                                Action a1 = () =>
-                                {
-                                    var winHomeResults = winH.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                    row.winHome = winHomeResults.Count() != 0 ? winHomeResults.First().probability : "-1";
-                                    a1Finished = true;
-                                };
-
-                                Action a2 = () =>
-                                {
-                                    var winAwayResults = winA.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                    row.winAway = winAwayResults.Count() != 0 ? winAwayResults.First().probability : "-1";
-                                    a2Finished = true;
-                                };
-
-                                Action a3 = () =>
-                                {
-                                    var likelyProbResults = likelyProb.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                    row.likelyProb = likelyProbResults.Count() != 0 ? likelyProbResults.First().probability : "-1";
-                                    a3Finished = true;
-                                };
-
-                                Action a4 = () =>
-                                {
-                                    var likelyScoreResults = likelyScore.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                                    row.likelyScore = likelyScoreResults.Count() != 0 ? likelyScoreResults.First().probability : "-1";
-                                    a4Finished = true;
-                                };
-
-                                a1.BeginInvoke(null, this);
-                                a2.BeginInvoke(null, this);
-                                a3.BeginInvoke(null, this);
-                                a4.BeginInvoke(null, this);
-
-                                while (a1Finished == false ||
-                                       a2Finished == false ||
-                                       a3Finished == false ||
-                                       a4Finished == false)
-                                {
-                                    log.Info(string.Format("Waiting for actions to complete...{0}-{1}-{2}-{3}", a1Finished, a2Finished, a3Finished, a4Finished));
-                                    System.Threading.Thread.Sleep(2000);
-                                }
-
-                                log.Info(string.Format("Actions completed...{0}-{1}-{2}-{3}", a1Finished, a2Finished, a3Finished, a4Finished));
-
-                                if (row.winHome == "-1") { var msg = "WARNING! Failed to calulate goals win home probabilty for " + gameId; log.Warn(msg); return msg; }
-                                if (row.winAway == "-1") { var msg = "WARNING! Failed to calulate goals win away probabilty for " + gameId; log.Warn(msg); return msg; }
-                                if (row.likelyProb == "-1") { var msg = "WARNING! Failed to calulate goals likely probabilty for " + gameId; log.Warn(msg); return msg; }
-                                if (row.likelyScore == "-1") { var msg = "WARNING! Failed to calulate goals likely score for " + gameId; log.Warn(msg); return msg; }
-                            }
-                            catch (Exception e)
-                            {
-                                log.Warn("Exception caught while getting match predictions for game: " + gameId + " exception: " + e);
-                            }
-
-                            var result = JsonConvert.SerializeObject(row, Formatting.Indented);
-                            log.Info("Result:");
-                            log.Info(result);
-
-                            return result;
-                        }
-                        else
-                        {
-                            return "PredictionReader failed - null league";
-                        }
-                    }
-                    else
-                    {
-                        return "PredictionReader failed";
-                    }
-                }
-                else
-                {
-                    return "R failed";
-                }
-            }
-            catch (Exception ce)
-            {
-                return "Big exception " + ce;
-            }
+            return goalsBiVarPrediction.execute(gameId, 0);
         }
     }
 
@@ -902,7 +363,7 @@ namespace GoalsAndCornersPredictions
             }
 
             log.Info("Service is up and running");
-            
+
             while (alive)
             {
                 System.Threading.Thread.Sleep(2000);

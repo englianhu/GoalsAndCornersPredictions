@@ -9,25 +9,27 @@ using System.Threading.Tasks;
 
 namespace GoalsAndCornersPredictions
 {
-    public class RNETExecutor
+    public class RNETExecutor : RExecutor
     {
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
+        public RNETExecutor(PredictionType predType)
+            : base(predType)
+        {
+        }
+
         static REngine engine = null;
-        public static bool Execute(String workingDirectory, PredictionType predType)
+
+        public override bool Execute(String workingDirectory)
         {
             log.Info("RNETExecutor --------->");
 
             var envPath = Environment.GetEnvironmentVariable("PATH");
-            //var rBinPath = @"C:\Users\kate\Documents\R\R-3.0.3\bin\x64";
-            var rBinPath = @"C:\Program Files\R\R-3.0.3\bin\x64";
-            
+
             Environment.SetEnvironmentVariable("PATH", envPath + Path.PathSeparator + rBinPath);
 
             var rDllPath = Path.Combine(rBinPath, "R.dll");
-            //string newDllPath = System.IO.Path.GetTempPath() + Guid.NewGuid().ToString() + ".dll";
-            //File.Copy(rDllPath, newDllPath);
 
             string inputPath = workingDirectory + Path.DirectorySeparatorChar + "input.txt";
             string winHPath = workingDirectory + Path.DirectorySeparatorChar + "winH.csv";
@@ -42,7 +44,7 @@ namespace GoalsAndCornersPredictions
             {
                 engine = REngine.GetInstanceFromID("RDotNet");
 
-                if(engine == null)
+                if (engine == null)
                 {
                     log.Info("Creating a new instance of the R-Engine");
                     engine = REngine.CreateInstance("RDotNet");
@@ -139,7 +141,7 @@ namespace GoalsAndCornersPredictions
 
                     engine.Evaluate("cat (\"80%\", \"\n\")");
 
-                    if (predType == PredictionType.corner)
+                    if (this.predType == PredictionType.corner)
                     {
                         engine.Evaluate("goals <- 0:14");
                     }
@@ -164,7 +166,6 @@ namespace GoalsAndCornersPredictions
 
                         "winH[HomeTeam, AwayTeam] <- sum(sapply(goals, function(x) (1-ppois(x, lambda=GoalsH[HomeTeam, AwayTeam]))*ppois(x, lambda=GoalsA[HomeTeam, AwayTeam])))/length(goals)" + Environment.NewLine +
                         "winA[HomeTeam, AwayTeam] <- sum(sapply(goals, function(x) (1-ppois(x, lambda=GoalsA[HomeTeam, AwayTeam]))*ppois(x, lambda=GoalsH[HomeTeam, AwayTeam])))/length(goals)" + Environment.NewLine +
-                        //"#draw[HomeTeam, AwayTeam] <- sum(sapply(goals, function(x) dpois(x, lambda=GoalsA[HomeTeam, AwayTeam])*dpois(x, lambda=GoalsH[HomeTeam, AwayTeam])))/length(goals)" + Environment.NewLine +
                         "}" + Environment.NewLine + "}");
 
                     engine.Evaluate("write.csv2(winH, winHFile, row.names=FALSE, sep=\";\",quote=FALSE)");
@@ -179,8 +180,8 @@ namespace GoalsAndCornersPredictions
 
                 stopWatch.Stop();
                 log.Info("REngine completed in: " + stopWatch.Elapsed.TotalSeconds + " seconds");
-                return true;
 
+                return true;
             }
             catch (Exception ce)
             {

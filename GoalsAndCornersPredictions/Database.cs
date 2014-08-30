@@ -25,21 +25,22 @@ namespace Db
         }
     };
 
-     public class Database
+    public class Database
     {
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger
         (System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private DbCreator dbCreator = null;
         private ConnectionMgr connMgr = null;
+        private readonly object syncLock = new object();
 
         public Database(DbCreator creator, ConnectionMgr connectionMgr = null)
         {
             if (connectionMgr == null) connMgr = new ConnectionMgr();
             dbCreator = creator;
         }
-     
-           
+
+
         public bool Connect(string connectionString)
         {
             bool retVal = false;
@@ -76,7 +77,7 @@ namespace Db
             if (retVal)
             {
                 connMgr.Add(connection);
-                log.Info("Connected to database: " +connectionString);
+                log.Info("Connected to database: " + connectionString);
             }
 
             return retVal;
@@ -84,48 +85,54 @@ namespace Db
 
         public List<string> OneColumnQuery(string sql)
         {
-            var ids = new List<string>();
-
-            using (DbCommand find = dbCreator.newCommand(sql, connMgr.NextConnection()))
+            lock (syncLock)
             {
-                using (DbDataReader dr = find.ExecuteReader())
-                {
-                    bool hasRows = dr.HasRows;
+                var ids = new List<string>();
 
-                    if (hasRows == true)
+                using (DbCommand find = dbCreator.newCommand(sql, connMgr.NextConnection()))
+                {
+                    using (DbDataReader dr = find.ExecuteReader())
                     {
-                        while (dr.Read())
+                        bool hasRows = dr.HasRows;
+
+                        if (hasRows == true)
                         {
-                            ids.Add(dr[0].ToString());
+                            while (dr.Read())
+                            {
+                                ids.Add(dr[0].ToString());
+                            }
                         }
                     }
                 }
-            }
 
-            return ids;
+                return ids;
+            }
         }
 
         public void RunSQL(string sql, Action<DbDataReader> a)
         {
-            try
+            lock (syncLock)
             {
-                using (DbCommand cmd = dbCreator.newCommand(sql, connMgr.NextConnection()))
+                try
                 {
-                    using (DbDataReader dr = cmd.ExecuteReader())
+                    using (DbCommand cmd = dbCreator.newCommand(sql, connMgr.NextConnection()))
                     {
-                        while (dr.Read())
+                        using (DbDataReader dr = cmd.ExecuteReader())
                         {
-                            a(dr);
-                        }
+                            while (dr.Read())
+                            {
+                                a(dr);
+                            }
 
-                        dr.Close();
+                            dr.Close();
+                        }
                     }
                 }
-            }
-            catch (DbException e)
-            {
-                log.Error("Exception: " + e);
-                throw e;
+                catch (DbException e)
+                {
+                    log.Error("Exception: " + e);
+                    throw e;
+                }
             }
         }
     }

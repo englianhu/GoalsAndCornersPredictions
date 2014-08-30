@@ -106,6 +106,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Configuration.cs" />
+    <Compile Include="GetResults.cs" />
+    <Compile Include="GoalsPredictions.cs" />
     <Compile Include="RNetBiVariateExecutor.cs" />
     <Compile Include="PredictionReader.cs" />
     <Compile Include="RNetExecutor.cs" />
