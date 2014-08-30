@@ -102,7 +102,7 @@ namespace GoalsAndCornersPredictions
                 row.gameId = gameId;
 
                 TeamNameToId team2id = new TeamNameToId(dbStuff);
-                GetResults result = new GetResults(team2id, path, team1, team2);
+                GetResults result = new GetResults(team2id, cfg.predReader, path, team1, team2);
 
                 row.winHome = result.get("winH.csv");
                 row.winAway = result.get("likelyProb.csv");

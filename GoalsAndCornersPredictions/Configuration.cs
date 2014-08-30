@@ -11,12 +11,14 @@ namespace GoalsAndCornersPredictions
 
         public RExecutor rExecutor = null;
         public CreateInputFile createInputFile = null;
+        public PredictionReader predReader = null;
 
-        public Configuration(string dayJoin, CreateInputFile createInputFile, RExecutor r)
+        public Configuration(string dayJoin, CreateInputFile createInputFile, PredictionReader reader, RExecutor r)
         {
             this.dayJoin = dayJoin;
             this.rExecutor = r;
             this.createInputFile = createInputFile;
+            this.predReader = reader;
         }
 
         public string generateDay()

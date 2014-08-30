@@ -17,13 +17,15 @@ namespace GoalsAndCornersPredictions
         string path = null;
         int team1 = -1;
         int team2 = -1;
+        PredictionReader predictionReader = null;
 
-        public GetResults(TeamNameToId team2id, string path, int team1, int team2)
+        public GetResults(TeamNameToId team2id, PredictionReader reader, string path, int team1, int team2)
         {
             this.team2id = team2id;
             this.path = path;
             this.team1 = team1;
             this.team2 = team2;
+            this.predictionReader = reader;
         }
 
         public string get(string fileName)
@@ -37,7 +39,7 @@ namespace GoalsAndCornersPredictions
             var stopWatchA1 = new Stopwatch();
             stopWatchA1.Start();
 
-            var predReader = PredictionReader.Read(team2id, Path.Combine(path, fileName));
+            var predReader = predictionReader.Read(team2id, Path.Combine(path, fileName));
 
             if (predReader == null)
             {

@@ -56,7 +56,7 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public static List<ProbabilityHolder> Read(TeamNameToId team2id, String full_name)
+        public virtual List<ProbabilityHolder> Read(TeamNameToId team2id, String full_name)
         {
 
             var data = new List<ProbabilityHolder>();
@@ -97,6 +97,60 @@ namespace GoalsAndCornersPredictions
                 String[] values = line.Split(';');
 
                 for (int i = 1; i < values.Length; i++)
+                {
+                    data.Add(new ProbabilityHolder() { team1Id = team_ids[j], team2Id = team_ids[i], probability = values[i] });
+                }
+                j++;
+            }
+
+            return data;
+        }
+    };
+
+    public class PredictionReaderWithNoNames : PredictionReader
+    {
+        private static readonly log4net.ILog log
+          = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        public override List<ProbabilityHolder> Read(TeamNameToId team2id, String full_name)
+        {
+
+            var data = new List<ProbabilityHolder>();
+
+            if (File.Exists(full_name) == false)
+            {
+                return null;
+            }
+
+            var reader = new StreamReader(File.OpenRead(full_name));
+
+            //read header which is:
+            // TeamName1, TeamName2
+            var header = reader.ReadLine();
+            var team_names = header.Split(';').ToList();
+            
+            log.Debug(team_names);
+
+            //store team with their team id not team name
+            List<int> team_ids = new List<int>();
+
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
+            foreach (String team_name in team_names)
+            {
+                team_ids.Add(team2id.getId(team_name));
+            }
+
+            int j = 0;
+            stopWatch.Stop();
+            log.Info("reading results completed in: " + stopWatch.Elapsed.TotalSeconds + " seconds");
+
+            while (!reader.EndOfStream)
+            {
+                var line = reader.ReadLine();
+                String[] values = line.Split(';');
+
+                for (int i = 0; i < values.Length; i++)
                 {
                     data.Add(new ProbabilityHolder() { team1Id = team_ids[j], team2Id = team_ids[i], probability = values[i] });
                 }

@@ -6,26 +6,19 @@
 ## N Green
 ## 2014
 
-
-#data <- read.csv("D:\\My Documents\\Data\\TurkeyA2.txt")
-# data <- read.csv("H:\\Personal\\DavesStats\\data\\TurkeyA2.txt")
-data <- read.csv("G:\\Documents\\DavesStats\\input_data\\TurkeyA2.txt") #external drive
+data <- read.csv("input.txt") #external drive
 
 library(plyr)
 # library(bivpois)  #issue that its out-of-date. load functions directly
-source("G:/Documents/DavesStats/pbivpois.R")
-source("G:/Documents/DavesStats/simplebp.R")
-source("G:/Documents/DavesStats/lmbp.R")
-source("G:/Documents/DavesStats/newnamesbeta.R")
-source("G:/Documents/DavesStats/splitbeta.R")
-
+source("D:/pbivpois.R")
+source("D:/simplebp.R")
+source("D:/lmbp.R")
+source("D:/newnamesbeta.R")
+source("D:/splitbeta.R")
 
 leagueStats <- function(data, stat=score,concede,games){
   ##TODO##
 }
-
-
-
 
 ## total goals scored by Team
 HomeGoals  <- aggregate(data$HomeGoals, by=list(data$HomeTeam), sum)
@@ -92,11 +85,8 @@ goalMax <- 5
 goals.seq <- 0:goalMax
 goals.length <- length(goals.seq)
 
-
-
 ## "pitch" effect
 ## bivariate Poisson
-
 
 ## constant, simple
 ### most naive
@@ -148,16 +138,12 @@ lambda3 <- exp(lm.fit$beta3)
 
 perms   <- as.matrix(expand.grid(goals.seq, goals.seq))
 
-
-for (i in 1:nrow(pred.data)){
-    
+for (i in 1:nrow(pred.data)){    
     #######################
     ## bivariate Poisson ##
     #######################
-    
 
     probsHA <- pbivpois(x=perms, lambda=c(lambda1[i], lambda2[i], lambda3))
-    #                    lambda=c(GoalsH[HomeTeam, AwayTeam]-lambda3, GoalsA[HomeTeam, AwayTeam]-lambda3, lambda3)))
 
     likelyScore[pred.data$HomeTeam[i], pred.data$AwayTeam[i]] <- paste(perms[probsHA==max(probsHA),], collapse = ' ')
     likelyProb[pred.data$HomeTeam[i], pred.data$AwayTeam[i]]  <- max(probsHA)
@@ -166,12 +152,9 @@ for (i in 1:nrow(pred.data)){
     winA[pred.data$HomeTeam[i], pred.data$AwayTeam[i]] <- sum(probsHA[perms[,2]>perms[,1]])/sum(probsHA)    
 }
 
+write.csv2(winH, "winH.csv", row.names=FALSE, sep=";",quote=FALSE)
+write.csv2(winA, "winA.csv", row.names=FALSE, sep=";",quote=FALSE)
 
-
-library(rCharts)
-pred.data <- data.frame(pred.data, llambda1=log(lambda1), llambda2=log(lambda2), Game=paste(pred.data$HomeTeam, "vs", pred.data$AwayTeam))
-n1 <- rPlot(llambda1~llambda2, data=pred.data, color="Game", type="point")
-n1$set(width = 2000)
-n1$set(height = 800)
-n1
+write.csv2(likelyProb, "likelyProb.csv", row.names=FALSE, sep=";",quote=FALSE)
+write.csv2(likelyScore, "likelyScore.csv", row.names=FALSE, sep=";",quote=FALSE)
 
