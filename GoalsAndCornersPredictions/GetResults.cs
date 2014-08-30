@@ -50,7 +50,11 @@ namespace GoalsAndCornersPredictions
                 var results = predReader.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
                 log.Info(fileName + " contains: " + predReader.Count() + " results: " + results);
                 ret_val = results.Count() != 0 ? results.First().probability : "-1";
-                if (ret_val == "-1") { var msg = "WARNING! Failed to calulate probabilty"; log.Warn(msg); throw new Exception( msg ); }
+                if (ret_val == "-1") {
+                    var msg = "WARNING! Failed to calulate probabilty for team1: " + team1 + " team2: " + team2;
+                    log.Warn(msg);
+                    throw new Exception( msg );
+                }
                   
             }
             stopWatchA1.Stop();

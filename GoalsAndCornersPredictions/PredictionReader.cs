@@ -149,14 +149,12 @@ namespace GoalsAndCornersPredictions
             {
                 var line = reader.ReadLine();
                 String[] values = line.Split(';');
-
                 for (int i = 0; i < values.Length; i++)
                 {
                     data.Add(new ProbabilityHolder() { team1Id = team_ids[j], team2Id = team_ids[i], probability = values[i] });
                 }
                 j++;
             }
-
             return data;
         }
     };

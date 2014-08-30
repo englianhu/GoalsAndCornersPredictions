@@ -45,7 +45,6 @@ namespace GoalsAndCornersPredictions
         public Database dbStuff { get; set; }
         public string PredictionDir { get; set; }
         public string RexecutableFullPath { get; set; }
-        public string ScriptFullPath { get; set; }
         public string GoalsScriptFullPath = @"D:\scriptCorners.R";
         public string CornersScriptFullPath = @"D:\scriptGoals.R";
         public string BiVariateScriptFullPath = @"D:\script_bivariate.R";
@@ -259,7 +258,6 @@ namespace GoalsAndCornersPredictions
         }
     }
 
-
     public class Service : IService
     {
         private static readonly log4net.ILog log
@@ -331,8 +329,7 @@ namespace GoalsAndCornersPredictions
             gd.dbStuff = db;
             gd.PredictionDir = ConfigurationManager.AppSettings["PredictionDir"];
             gd.RexecutableFullPath = ConfigurationManager.AppSettings["RexecutableFullPath"];
-            gd.ScriptFullPath = ConfigurationManager.AppSettings["ScriptFullPath"];
-
+         
             //create working directory
             if (Directory.Exists(gd.PredictionDir) == false)
             {

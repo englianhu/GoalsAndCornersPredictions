@@ -32,7 +32,7 @@ namespace GoalsAndCornersPredictions
 
             try
             {
-                int maxRWaitTime = 1000;
+                int maxRWaitTime = 20;
                 using (Process p = new Process())
                 {
                     p.StartInfo = si;
@@ -46,21 +46,22 @@ namespace GoalsAndCornersPredictions
 
                     int waitedTime = 0;
 
-                    while (p.HasExited == false || waitedTime < maxRWaitTime)
+                    while (p.HasExited == false || waitedTime > maxRWaitTime)
                     {
-                        log.Debug("Waiting " + waitedTime + " seconds for R process to finish");
+                        log.Debug("Waiting for R process to finish");
 
-                        System.Threading.Thread.Sleep(5000);
-
-                        waitedTime += 5;
-
+                        System.Threading.Thread.Sleep(2000);
+                        
+                        waitedTime ++;
+                        /*
                         var rProcesses = Process.GetProcesses().ToArray().ToList().Select(x => x.MainWindowTitle);
 
                         if (rProcesses.Any(y => y.Equals(GlobalData.Instance.RexecutableFullPath)) == false)
                         {
                             log.Warn("Looks like R has crashed, exitting...");
-                            break;
+                            continue;
                         }
+                        */
                     }
                 }
             }
