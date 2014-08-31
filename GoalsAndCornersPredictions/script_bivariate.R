@@ -10,11 +10,11 @@ data <- read.csv("input.txt") #external drive
 
 library(plyr)
 # library(bivpois)  #issue that its out-of-date. load functions directly
-source("D:/pbivpois.R")
-source("D:/simplebp.R")
-source("D:/lmbp.R")
-source("D:/newnamesbeta.R")
-source("D:/splitbeta.R")
+source("pbivpois.R")
+source("simplebp.R")
+source("lmbp.R")
+source("newnamesbeta.R")
+source("splitbeta.R")
 
 leagueStats <- function(data, stat=score,concede,games){
   ##TODO##
