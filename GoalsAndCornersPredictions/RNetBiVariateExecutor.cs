@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,74 +13,36 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public RNetBiVariateExecutor(PredictionType predType) :base(predType)
+        public RNetBiVariateExecutor()
+            : base(PredictionType.corner)
         {
         }
 
-        public override bool Execute(String workingDirectory)
+        protected override void CopyScripts(string workingDirectory)
         {
-            log.Debug("Running process in directory: " + workingDirectory);
-            //TODO: either use PATH env. or configurable full path
+            log.Debug("Copying script files");
+            string filename = Path.GetFileName(GlobalData.Instance.BiVariateScriptFullPath);
+            string path = Path.GetDirectoryName(GlobalData.Instance.BiVariateScriptFullPath);
+
+            System.IO.File.Copy(GlobalData.Instance.BiVariateScriptFullPath, Path.Combine(workingDirectory, filename), true);
+            System.IO.File.Copy(Path.Combine(path, "pbivpois.R"), Path.Combine(workingDirectory, "pbivpois.R"), true);
+            System.IO.File.Copy(Path.Combine(path, "simplebp.R"), Path.Combine(workingDirectory, "simplebp.R"), true);
+            System.IO.File.Copy(Path.Combine(path, "lmbp.R"), Path.Combine(workingDirectory, "lmbp.R"), true);
+            System.IO.File.Copy(Path.Combine(path, "newnamesbeta.R"), Path.Combine(workingDirectory, "newnamesbeta.R"), true);
+            System.IO.File.Copy(Path.Combine(path, "splitbeta.R"), Path.Combine(workingDirectory, "splitbeta.R"), true);
+        }
+
+        protected override ProcessStartInfo SetupProcess(string workingDirectory)
+        {
             ProcessStartInfo si = new ProcessStartInfo();
             si.FileName = GlobalData.Instance.RexecutableFullPath;
-            
-            si.Arguments = @"CMD BATCH " + GlobalData.Instance.BiVariateScriptFullPath;
-          
+
+            si.Arguments = @"CMD BATCH " + Path.GetFileName(GlobalData.Instance.BiVariateScriptFullPath);
 
             si.WorkingDirectory = workingDirectory;
             si.UseShellExecute = true;
             si.CreateNoWindow = true;
-
-            try
-            {
-                int maxRWaitTime = 20;
-                using (Process p = new Process())
-                {
-                    p.StartInfo = si;
-                    p.Exited += processExited;
-                    p.EnableRaisingEvents = true;
-
-                    if (p.Start())
-                    {
-                        p.PriorityClass = ProcessPriorityClass.AboveNormal;
-                    }
-
-                    int waitedTime = 0;
-
-                    while (p.HasExited == false || waitedTime > maxRWaitTime)
-                    {
-                        log.Debug("Waiting for R process to finish");
-
-                        System.Threading.Thread.Sleep(2000);
-                        
-                        waitedTime ++;
-                        /*
-                        var rProcesses = Process.GetProcesses().ToArray().ToList().Select(x => x.MainWindowTitle);
-
-                        if (rProcesses.Any(y => y.Equals(GlobalData.Instance.RexecutableFullPath)) == false)
-                        {
-                            log.Warn("Looks like R has crashed, exitting...");
-                            continue;
-                        }
-                        */
-                    }
-                }
-            }
-            catch (InvalidOperationException e)
-            {
-                log.Error("Error executing process exception: " + e);
-            }
-            catch (Exception e)
-            {
-                log.Error("Error executing process exception: " + e);
-            }
-
-            return false;
-        }
-
-        static void processExited(object sender, EventArgs e)
-        {
-            log.Info("R has exitted");
+            return si;
         }
     };
 }

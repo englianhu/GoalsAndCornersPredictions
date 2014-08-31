@@ -250,7 +250,7 @@ namespace GoalsAndCornersPredictions
                 }
             }
 
-            if (leagueIds == null) throw new Exception("R failed");
+            if (leagueIds == null) throw new Exception("Could not determine league for given game");
 
             log.Info("League Search: " + leagueIds);
 
@@ -263,9 +263,9 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
            = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        GoalsPredictions goalsPrediction = new GoalsPredictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReader(), new RNETExecutor(PredictionType.goal)));
+        GoalsPredictions goalsPrediction = new GoalsPredictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReader(), new RExecutor(PredictionType.goal)));
         GoalsPredictions cornersPrediction = new GoalsPredictions(new Configuration("_c_", new CreateInputFileCorners(), new PredictionReader(), new RNETExecutor(PredictionType.corner)));
-        GoalsPredictions goalsBiVarPrediction = new GoalsPredictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReaderWithNoNames(), new RNetBiVariateExecutor(PredictionType.goal)));
+        GoalsPredictions goalsBiVarPrediction = new GoalsPredictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReaderWithNoNames(), new RNetBiVariateExecutor()));
 
         Service()
         {

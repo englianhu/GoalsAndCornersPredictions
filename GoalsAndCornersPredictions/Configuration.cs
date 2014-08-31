@@ -9,7 +9,7 @@ namespace GoalsAndCornersPredictions
     {
         string dayJoin = "__";
 
-        public RExecutor rExecutor = null;
+        public R rExecutor = null;
         public CreateInputFile createInputFile = null;
         public PredictionReader predReader = null;
 
@@ -21,10 +21,11 @@ namespace GoalsAndCornersPredictions
             this.predReader = reader;
         }
 
-        public string generateDay()
+        public string generateDay(string gameId)
         {
             var uuid = System.Guid.NewGuid().ToString();
-            return uuid.Substring(0, 8) + dayJoin + DateTime.Today.ToString("ddMMyyyy");     
+            var dir = gameId + "_" + uuid.Substring(0, 8) + dayJoin + DateTime.Today.ToString("ddMMyyyy");
+            return dir;
         }
     }
 }

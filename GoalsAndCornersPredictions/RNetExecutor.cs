@@ -27,9 +27,9 @@ namespace GoalsAndCornersPredictions
 
             var envPath = Environment.GetEnvironmentVariable("PATH");
 
-            Environment.SetEnvironmentVariable("PATH", envPath + Path.PathSeparator + rBinPath);
+            Environment.SetEnvironmentVariable("PATH", envPath + Path.PathSeparator + Path.GetDirectoryName(GlobalData.Instance.RexecutableFullPath));
 
-            var rDllPath = Path.Combine(rBinPath, "R.dll");
+            var rDllPath = Path.Combine(Path.GetDirectoryName(GlobalData.Instance.RexecutableFullPath), "R.dll");
 
             string inputPath = workingDirectory + Path.DirectorySeparatorChar + "input.txt";
             string winHPath = workingDirectory + Path.DirectorySeparatorChar + "winH.csv";

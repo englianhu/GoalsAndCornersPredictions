@@ -62,7 +62,7 @@ namespace GoalsAndCornersPredictions
 
                 log.Debug("Number of games : " + games.Count);
 
-                String league_day = cfg.generateDay();
+                String league_day = cfg.generateDay(gameId);
 
                 path = Path.Combine(GlobalData.Instance.PredictionDir, league_day);
 
@@ -70,20 +70,10 @@ namespace GoalsAndCornersPredictions
                 {
                     Directory.CreateDirectory(path);
                     cfg.createInputFile.Create(path, games);
-
-                    var tokenSource = new CancellationTokenSource();
-                    CancellationToken token = tokenSource.Token;
-                    int timeOut = 180000;
-
-                    var task = Task.Factory.StartNew(() => cfg.rExecutor.Execute(path), token);
-
-                    if (!task.Wait(timeOut, token))
-                        Console.WriteLine("The Task timed out!");
+                    
+                    cfg.rExecutor.Execute(path);
                 }
               
-                var stopWatch = new Stopwatch();
-                stopWatch.Start();
-
                 int team1 = -1;
                 int team2 = -1;
 
@@ -92,8 +82,7 @@ namespace GoalsAndCornersPredictions
                     {
                         team1 = int.Parse(dr[0].ToString());
                         team2 = int.Parse(dr[1].ToString());
-                    }
-                );
+                    });
 
                 log.Info("Game: " + gameId + " team1: " + team1 + " team2: " + team2);
 
@@ -109,9 +98,6 @@ namespace GoalsAndCornersPredictions
                 row.likelyProb = result.get("likelyProb.csv");
                 row.likelyScore = result.get("likelyScore.csv");
 
-                stopWatch.Stop();
-                log.Info("Reding results completed in: " + stopWatch.Elapsed.TotalSeconds + " seconds");
-
                 var json_result = JsonConvert.SerializeObject(row, Formatting.Indented);
                 log.Info("Result:");
                 log.Info(json_result);
@@ -120,7 +106,9 @@ namespace GoalsAndCornersPredictions
             }
             catch (Exception ce)
             {
-                return "Big exception " + ce;
+                string msg = "Exception caught: " + ce;
+                log.Error(msg);
+                return msg;
             }
         }
     }

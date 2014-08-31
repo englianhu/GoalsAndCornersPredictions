@@ -1,53 +1,55 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace GoalsAndCornersPredictions
 {
-    public class RExecutor
+    public abstract class R
+    {
+        protected abstract void CopyScripts(string workingDirectory);
+        protected abstract bool Run(ProcessStartInfo si);
+        protected abstract ProcessStartInfo SetupProcess(string workingDirectory);
+        public abstract bool Execute(String workingDirectory);
+    };
+
+    public class RExecutor : R
     {
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         protected PredictionType predType;
 
-        protected string rBinPath = @"C:\Program Files\R\R-3.0.2\bin\x64";
+ //       protected string rBinPath = @"C:\Program Files\R\R-3.0.2\bin\x64";
 
         public RExecutor(PredictionType predType)
         {
             this.predType = predType;
         }
 
-        public virtual bool Execute(String workingDirectory)
+        protected override void CopyScripts(string workingDirectory)
         {
-            log.Debug("Running process in directory: " + workingDirectory);
-
-            ProcessStartInfo si = new ProcessStartInfo();
-            si.FileName = GlobalData.Instance.RexecutableFullPath;
-
+            log.Debug("Copying script files");
             if (predType == PredictionType.corner)
             {
-                si.Arguments = @"CMD BATCH " + GlobalData.Instance.GoalsScriptFullPath;
+                string filename = Path.GetFileName(GlobalData.Instance.CornersScriptFullPath); 
+                System.IO.File.Copy(GlobalData.Instance.CornersScriptFullPath, Path.Combine(workingDirectory, filename), true);
             }
-            else
-            {
-                si.Arguments = @"CMD BATCH " + GlobalData.Instance.CornersScriptFullPath;
+            else {
+                string filename = Path.GetFileName(GlobalData.Instance.GoalsScriptFullPath); 
+                System.IO.File.Copy(GlobalData.Instance.GoalsScriptFullPath, Path.Combine(workingDirectory, filename), true);
             }
+        }
 
-            si.WorkingDirectory = workingDirectory;
-            si.UseShellExecute = true;
-            si.CreateNoWindow = true;
-
-            try
-            {
-                int maxRWaitTime = 1000;
+        protected override bool Run(ProcessStartInfo si)
+        {
                 using (Process p = new Process())
                 {
                     p.StartInfo = si;
-                    p.Exited += processExited;
+                //    p.Exited += processExited;
                     p.EnableRaisingEvents = true;
 
                     if (p.Start())
@@ -55,16 +57,17 @@ namespace GoalsAndCornersPredictions
                         p.PriorityClass = ProcessPriorityClass.AboveNormal;
                     }
 
+                    int maxRWaitTime = 10;
                     int waitedTime = 0;
 
-                    while (p.HasExited == false || waitedTime < maxRWaitTime)
+                    while (p.HasExited == false || waitedTime > maxRWaitTime)
                     {
                         log.Debug("Waiting " + waitedTime + " seconds for R process to finish");
 
-                        System.Threading.Thread.Sleep(5000);
+                        System.Threading.Thread.Sleep(2000);
 
-                        waitedTime += 5;
-
+                        waitedTime++;
+                        /*
                         var rProcesses = Process.GetProcesses().ToArray().ToList().Select(x => x.MainWindowTitle);
 
                         if (rProcesses.Any(y => y.Equals(GlobalData.Instance.RexecutableFullPath)) == false)
@@ -72,24 +75,43 @@ namespace GoalsAndCornersPredictions
                             log.Warn("Looks like R has crashed, exitting...");
                             break;
                         }
+                         */
                     }
+                    if (waitedTime < maxRWaitTime) return false;
+                    return true;
                 }
-            }
-            catch (InvalidOperationException e)
-            {
-                log.Error("Error executing process exception: " + e);
-            }
-            catch (Exception e)
-            {
-                log.Error("Error executing process exception: " + e);
-            }
-
-            return false;
         }
 
-        void processExited(object sender, EventArgs e)
+        protected override ProcessStartInfo SetupProcess(string workingDirectory)
         {
-            log.Info("R has exitted");
+            ProcessStartInfo si = new ProcessStartInfo();
+            si.FileName = GlobalData.Instance.RexecutableFullPath;
+
+            if (predType == PredictionType.corner)
+            {
+                si.Arguments = @"CMD BATCH " + Path.GetFileName(GlobalData.Instance.CornersScriptFullPath);
+            }
+            else
+            {
+                si.Arguments = @"CMD BATCH " + Path.GetFileName(GlobalData.Instance.GoalsScriptFullPath);
+            }
+
+            si.WorkingDirectory = workingDirectory;
+            si.UseShellExecute = true;
+            si.CreateNoWindow = true;
+            return si;
         }
+
+        public override bool Execute(String workingDirectory)
+        {
+            log.Debug("Running process in directory: " + workingDirectory);
+
+            CopyScripts(workingDirectory);
+
+            ProcessStartInfo si = SetupProcess(workingDirectory);
+         
+            return Run(si);
+        }
+
     };
 }
