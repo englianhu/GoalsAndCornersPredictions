@@ -23,8 +23,6 @@ namespace GoalsAndCornersPredictions
 
         protected PredictionType predType;
 
- //       protected string rBinPath = @"C:\Program Files\R\R-3.0.2\bin\x64";
-
         public RExecutor(PredictionType predType)
         {
             this.predType = predType;
@@ -49,7 +47,6 @@ namespace GoalsAndCornersPredictions
                 using (Process p = new Process())
                 {
                     p.StartInfo = si;
-                //    p.Exited += processExited;
                     p.EnableRaisingEvents = true;
 
                     if (p.Start())

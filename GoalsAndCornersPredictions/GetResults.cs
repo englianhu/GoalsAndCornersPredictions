@@ -12,19 +12,17 @@ namespace GoalsAndCornersPredictions
     {
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-        
-        TeamNameToId team2id = null;
+
         string path = null;
-        int team1 = -1;
-        int team2 = -1;
+        string team1name;
+        string team2name;
         PredictionReader predictionReader = null;
 
-        public GetResults(TeamNameToId team2id, PredictionReader reader, string path, int team1, int team2)
+        public GetResults(PredictionReader reader, string path, string team1, string team2)
         {
-            this.team2id = team2id;
             this.path = path;
-            this.team1 = team1;
-            this.team2 = team2;
+            this.team1name = team1;
+            this.team2name = team2;
             this.predictionReader = reader;
         }
 
@@ -39,23 +37,27 @@ namespace GoalsAndCornersPredictions
             var stopWatchA1 = new Stopwatch();
             stopWatchA1.Start();
 
-            var predReader = predictionReader.Read(team2id, Path.Combine(path, fileName));
+            Statistics stats = predictionReader.Read(Path.Combine(path, fileName));
 
-            if (predReader == null)
+            if (stats == null)
             {
                 log.Error("PredictionReader failed " + fileName + " null");
             }
             else
             {
-                var results = predReader.Where(x => x != null && x.team1Id == team1 && x.team2Id == team2);
-                log.Info(fileName + " contains: " + predReader.Count() + " results: " + results);
-                ret_val = results.Count() != 0 ? results.First().probability : "-1";
-                if (ret_val == "-1") {
-                    var msg = "WARNING! Failed to calulate probabilty for team1: " + team1 + " team2: " + team2;
+                int team1statId = -1;
+                int team2statId = -1;
+                stats.statsId2teamName.TryGetValue(team1name, out team1statId);
+                stats.statsId2teamName.TryGetValue(team2name, out team2statId);
+
+                if (team1statId == -1 || team2statId == -1)
+                {
+                    var msg = "WARNING! Failed to calulate probabilty for team1: '" + team1name + "' team2: '" + team2name + "'";
                     log.Warn(msg);
-                    throw new Exception( msg );
+                    throw new Exception(msg);
                 }
-                  
+
+                ret_val = stats.stats[team1statId, team2statId];                           
             }
             stopWatchA1.Stop();
             log.Info("getting results completed in: " + stopWatchA1.Elapsed.TotalSeconds + " seconds");

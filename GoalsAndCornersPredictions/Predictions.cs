@@ -73,25 +73,34 @@ namespace GoalsAndCornersPredictions
                     
                     cfg.rExecutor.Execute(path);
                 }
-              
-                int team1 = -1;
-                int team2 = -1;
 
-                dbStuff.RunSQL("SELECT team1, team2 FROM games WHERE id = " + gameId + ";",
+                var stop1 = new Stopwatch();
+                stop1.Start();
+ 
+                string team1name = "";
+                string team2name = "";
+
+                string sql2 = "SELECT t1.name, t2.name"
+                + " FROM games g, teams t1, teams t2"
+                + " WHERE t1.id = g.team1 AND t2.id = g.team2;";
+
+                dbStuff.RunSQL(sql2,
                     (dr) =>
                     {
-                        team1 = int.Parse(dr[0].ToString());
-                        team2 = int.Parse(dr[1].ToString());
+                        team1name = dr[0].ToString();
+                        team2name = dr[1].ToString();
                     });
 
-                log.Info("Game: " + gameId + " team1: " + team1 + " team2: " + team2);
+                log.Info("Game: " + gameId + " team1name: '" + team1name + "' team2name: '" + team2name + "'");
+
+                stop1.Stop();
+                log.Info("getting team names from DB: " + stop1.Elapsed.TotalSeconds + " seconds");
 
                 PredRow row = new PredRow();
 
                 row.gameId = gameId;
-
-                TeamNameToId team2id = new TeamNameToId(dbStuff);
-                GetResults result = new GetResults(team2id, cfg.predReader, path, team1, team2);
+             
+                GetResults result = new GetResults(cfg.predReader, path, team1name, team2name);
 
                 row.winHome = result.get("winH.csv");
                 row.winAway = result.get("likelyProb.csv");
