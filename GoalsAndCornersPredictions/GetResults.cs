@@ -14,15 +14,13 @@ namespace GoalsAndCornersPredictions
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         string path = null;
-        string team1name;
-        string team2name;
+        GameDetails gameDetails = null;
         PredictionReader predictionReader = null;
 
-        public GetResults(PredictionReader reader, string path, string team1, string team2)
+        public GetResults(PredictionReader reader, string path, GameDetails gameDetails)
         {
             this.path = path;
-            this.team1name = team1;
-            this.team2name = team2;
+            this.gameDetails = gameDetails;
             this.predictionReader = reader;
         }
 
@@ -47,12 +45,12 @@ namespace GoalsAndCornersPredictions
             {
                 int team1statId = -1;
                 int team2statId = -1;
-                stats.statsId2teamName.TryGetValue(team1name, out team1statId);
-                stats.statsId2teamName.TryGetValue(team2name, out team2statId);
+                stats.statsId2teamName.TryGetValue(gameDetails.team1Name, out team1statId);
+                stats.statsId2teamName.TryGetValue(gameDetails.team2Name, out team2statId);
 
                 if (team1statId == -1 || team2statId == -1)
                 {
-                    var msg = "WARNING! Failed to calulate probabilty for team1: '" + team1name + "' team2: '" + team2name + "'";
+                    var msg = "WARNING! Failed to calulate probabilty for " + gameDetails.ToString() ;
                     log.Warn(msg);
                     throw new Exception(msg);
                 }

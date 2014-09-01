@@ -11,15 +11,14 @@ using System.Threading.Tasks;
 
 namespace GoalsAndCornersPredictions
 {
-
-    public class GoalsPredictions : ServiceCommon
+    public class Predictions : ServiceCommon
     {
         private static readonly log4net.ILog log
          = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private Configuration cfg;
 
-        public GoalsPredictions(Configuration cfg)
+        public Predictions(Configuration cfg)
         {
             this.cfg = cfg;
         }
@@ -31,20 +30,21 @@ namespace GoalsAndCornersPredictions
                 string path = "";
 
                 var gameDetails = GetGameDetails(gameId);
-                var team1Name = gameDetails.Split('|').ElementAt(0);
-                var team2Name = gameDetails.Split('|').ElementAt(1);
-
+                
                 ArrayList games = new ArrayList();
 
                 string leagueIds = GetLeagueIDs(gameId, depth);
 
                 //get goals, corners from all games in a league_id
+                var stop2 = new Stopwatch();
+                stop2.Start();
 
                 string sql = "SELECT t1.name, t2.name, MAX(s.hg), MAX(s.ag), MAX(s.hco), MAX(s.aco)"
                 + " FROM statistics s, games g, teams t1, teams t2"
-                + " WHERE g.league_id in ( "
+                + " WHERE g.league_id IN ( "
                 + leagueIds
-                + " ) AND s.game_id = g.id AND t1.id = g.team1 AND t2.id = g.team2 GROUP BY s.game_id, t1.name, t2.name;";
+                + " ) AND s.game_id = g.id AND t1.id = g.team1 AND t2.id = g.team2"
+                + " GROUP BY s.game_id, t1.name, t2.name;";
 
                 dbStuff.RunSQL(sql,
                     (dr) =>
@@ -61,6 +61,8 @@ namespace GoalsAndCornersPredictions
                 );
 
                 log.Debug("Number of games : " + games.Count);
+                stop2.Stop();
+                log.Info("getting gamess from DB: " + stop2.Elapsed.TotalSeconds + " seconds");
 
                 String league_day = cfg.generateDay(gameId);
 
@@ -74,33 +76,11 @@ namespace GoalsAndCornersPredictions
                     cfg.rExecutor.Execute(path);
                 }
 
-                var stop1 = new Stopwatch();
-                stop1.Start();
- 
-                string team1name = "";
-                string team2name = "";
-
-                string sql2 = "SELECT t1.name, t2.name"
-                + " FROM games g, teams t1, teams t2"
-                + " WHERE t1.id = g.team1 AND t2.id = g.team2;";
-
-                dbStuff.RunSQL(sql2,
-                    (dr) =>
-                    {
-                        team1name = dr[0].ToString();
-                        team2name = dr[1].ToString();
-                    });
-
-                log.Info("Game: " + gameId + " team1name: '" + team1name + "' team2name: '" + team2name + "'");
-
-                stop1.Stop();
-                log.Info("getting team names from DB: " + stop1.Elapsed.TotalSeconds + " seconds");
-
                 PredRow row = new PredRow();
 
                 row.gameId = gameId;
              
-                GetResults result = new GetResults(cfg.predReader, path, team1name, team2name);
+                GetResults result = new GetResults(cfg.predReader, path, gameDetails);
 
                 row.winHome = result.get("winH.csv");
                 row.winAway = result.get("likelyProb.csv");
@@ -121,5 +101,4 @@ namespace GoalsAndCornersPredictions
             }
         }
     }
-
 }

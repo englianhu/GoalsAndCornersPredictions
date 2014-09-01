@@ -144,6 +144,20 @@ namespace GoalsAndCornersPredictions
         corner
     };
 
+    public class GameDetails
+    {
+        public int gameId;
+        public string team1Name;
+        public string team2Name;
+        public string leagueName;
+        public string koDate;
+
+        public override string ToString()
+        {
+            return "game: " + gameId + " : " + team1Name + "|" + team2Name + "|" + leagueName + "|" + koDate;
+        }
+    };
+
     public class ServiceCommon
     {
         private static readonly log4net.ILog log
@@ -164,22 +178,31 @@ namespace GoalsAndCornersPredictions
             Console.WriteLine("naughty leagues --> " + x));
         }
 
-        public string GetGameDetails(string id)
+        public GameDetails GetGameDetails(string id)
         {
-            var sql = "select g1.id, t1.name, t2.name, l1.name, g1.kodate from games g1 join teams t1 on g1.team1 = t1.id join teams t2 on g1.team2 = t2.id join leagues l1 on l1.id = g1.league_id where g1.id =" + id;
+            var sql = "SELECT g1.id, t1.name, t2.name, l1.name, g1.kodate"
+            + " FROM games g1"
+            + " JOIN teams t1 ON g1.team1 = t1.id"
+            + " JOIN teams t2 ON g1.team2 = t2.id"
+            + " JOIN leagues l1 ON l1.id = g1.league_id"
+            + " WHERE g1.id =" + id;
 
-            string retVal = "";
+            GameDetails gameDetails = new GameDetails();
 
             dbStuff.RunSQL(sql,
               (dr) =>
               {
-                  retVal = dr[1].ToString() + "|" + dr[2].ToString() + "|" + dr[3].ToString() + "|" + dr[4].ToString();
+                  gameDetails.gameId = int.Parse(dr[0].ToString());
+                  gameDetails.team1Name = dr[1].ToString();
+                  gameDetails.team2Name = dr[2].ToString();
+                  gameDetails.leagueName = dr[3].ToString();
+                  gameDetails.koDate = dr[4].ToString();
               });
 
-            log.Info("GetGoalsPrediction is being invoked for: " + retVal);
+            log.Info("GetGoalsPrediction is being invoked for " + gameDetails.ToString());
             log.Info("This pointer = " + this);
 
-            return retVal;
+            return gameDetails;
         }
 
         public string GetLeagueIDs(string gameId, int depth = 0)
@@ -263,9 +286,9 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
            = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        GoalsPredictions goalsPrediction = new GoalsPredictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReader(), new RExecutor(PredictionType.goal)));
-        GoalsPredictions cornersPrediction = new GoalsPredictions(new Configuration("_c_", new CreateInputFileCorners(), new PredictionReader(), new RNETExecutor(PredictionType.corner)));
-        GoalsPredictions goalsBiVarPrediction = new GoalsPredictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReaderWithNoNames(), new RNetBiVariateExecutor()));
+        Predictions goalsPrediction = new Predictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReader(), new RExecutor(PredictionType.goal)));
+        Predictions cornersPrediction = new Predictions(new Configuration("_c_", new CreateInputFileCorners(), new PredictionReader(), new RNETExecutor(PredictionType.corner)));
+        Predictions goalsBiVarPrediction = new Predictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReaderWithNoNames(), new RNetBiVariateExecutor()));
 
         Service()
         {
