@@ -21,17 +21,19 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        protected PredictionType predType;
+        protected PredictionType m_predType;
+
+ //       protected string rBinPath = @"C:\Program Files\R\R-3.0.2\bin\x64";
 
         public RExecutor(PredictionType predType)
         {
-            this.predType = predType;
+            this.m_predType = predType;
         }
 
         protected override void CopyScripts(string workingDirectory)
         {
             log.Debug("Copying script files");
-            if (predType == PredictionType.corner)
+            if (m_predType == PredictionType.corner)
             {
                 string filename = Path.GetFileName(GlobalData.Instance.CornersScriptFullPath); 
                 System.IO.File.Copy(GlobalData.Instance.CornersScriptFullPath, Path.Combine(workingDirectory, filename), true);
@@ -47,6 +49,7 @@ namespace GoalsAndCornersPredictions
                 using (Process p = new Process())
                 {
                     p.StartInfo = si;
+                //    p.Exited += processExited;
                     p.EnableRaisingEvents = true;
 
                     if (p.Start())
@@ -84,7 +87,7 @@ namespace GoalsAndCornersPredictions
             ProcessStartInfo si = new ProcessStartInfo();
             si.FileName = GlobalData.Instance.RexecutableFullPath;
 
-            if (predType == PredictionType.corner)
+            if (m_predType == PredictionType.corner)
             {
                 si.Arguments = @"CMD BATCH " + Path.GetFileName(GlobalData.Instance.CornersScriptFullPath);
             }

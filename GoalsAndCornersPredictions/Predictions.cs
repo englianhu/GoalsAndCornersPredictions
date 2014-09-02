@@ -77,7 +77,7 @@ namespace GoalsAndCornersPredictions
                 GetResults result = new GetResults(cfg.predReader, path, gameDetails);
 
                 gameDetails.prediction.winHome = result.get("winH.csv");
-                gameDetails.prediction.winAway = result.get("likelyProb.csv");
+                gameDetails.prediction.winAway = result.get("winA.csv");
                 gameDetails.prediction.likelyProb = result.get("likelyProb.csv");
                 gameDetails.prediction.likelyScore = result.get("likelyScore.csv");
 

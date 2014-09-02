@@ -13,18 +13,28 @@ namespace GoalsAndCornersPredictions
         private static readonly log4net.ILog log
           = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public RNetBiVariateExecutor()
-            : base(PredictionType.corner)
+        public RNetBiVariateExecutor(PredictionType ptype)
+            : base(ptype)
         {
         }
 
         protected override void CopyScripts(string workingDirectory)
         {
             log.Debug("Copying script files");
-            string filename = Path.GetFileName(GlobalData.Instance.BiVariateScriptFullPath);
-            string path = Path.GetDirectoryName(GlobalData.Instance.BiVariateScriptFullPath);
+            
+            string path = Path.GetDirectoryName(GlobalData.Instance.GoalsBiVariateScriptFullPath);
 
-            System.IO.File.Copy(GlobalData.Instance.BiVariateScriptFullPath, Path.Combine(workingDirectory, filename), true);
+            if (m_predType == PredictionType.goal)
+            {
+                string filename = Path.GetFileName(GlobalData.Instance.GoalsBiVariateScriptFullPath);
+                System.IO.File.Copy(GlobalData.Instance.GoalsBiVariateScriptFullPath, Path.Combine(workingDirectory, filename), true);
+            }
+            else
+            {
+                string filename = Path.GetFileName(GlobalData.Instance.CornersBiVariateScriptFullPath);
+                System.IO.File.Copy(GlobalData.Instance.CornersBiVariateScriptFullPath, Path.Combine(workingDirectory, filename), true);
+            }
+
             System.IO.File.Copy(Path.Combine(path, "pbivpois.R"), Path.Combine(workingDirectory, "pbivpois.R"), true);
             System.IO.File.Copy(Path.Combine(path, "simplebp.R"), Path.Combine(workingDirectory, "simplebp.R"), true);
             System.IO.File.Copy(Path.Combine(path, "lmbp.R"), Path.Combine(workingDirectory, "lmbp.R"), true);
@@ -37,7 +47,14 @@ namespace GoalsAndCornersPredictions
             ProcessStartInfo si = new ProcessStartInfo();
             si.FileName = GlobalData.Instance.RexecutableFullPath;
 
-            si.Arguments = @"CMD BATCH " + Path.GetFileName(GlobalData.Instance.BiVariateScriptFullPath);
+            if (m_predType == PredictionType.goal)
+            {
+                si.Arguments = @"CMD BATCH " + Path.GetFileName(GlobalData.Instance.GoalsBiVariateScriptFullPath);
+            }
+            else
+            {
+                si.Arguments = @"CMD BATCH " + Path.GetFileName(GlobalData.Instance.CornersBiVariateScriptFullPath);
+            }
 
             si.WorkingDirectory = workingDirectory;
             si.UseShellExecute = true;

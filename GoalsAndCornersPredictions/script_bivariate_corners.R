@@ -10,11 +10,11 @@ data <- read.csv("input.txt") #external drive
 
 library(plyr)
 # library(bivpois)  #issue that its out-of-date. load functions directly
-source("pbivpois.R")
-source("simplebp.R")
-source("lmbp.R")
-source("newnamesbeta.R")
-source("splitbeta.R")
+source("C:/Users/daddy/Documents/GitHub/GoalsAndCornersPredictions/GoalsAndCornersPredictions/pbivpois.R")
+source("C:/Users/daddy/Documents/GitHub/GoalsAndCornersPredictions/GoalsAndCornersPredictions/simplebp.R")
+source("C:/Users/daddy/Documents/GitHub/GoalsAndCornersPredictions/GoalsAndCornersPredictions/lmbp.R")
+source("C:/Users/daddy/Documents/GitHub/GoalsAndCornersPredictions/GoalsAndCornersPredictions/newnamesbeta.R")
+source("C:/Users/daddy/Documents/GitHub/GoalsAndCornersPredictions/GoalsAndCornersPredictions/splitbeta.R")
 
 leagueStats <- function(data, stat=score,concede,games){
   ##TODO##
@@ -81,7 +81,7 @@ likelyScore <- likelyProb <- GoalsH
 winH <- winA <- GoalsH
 
 
-goalMax <- 5
+goalMax <- 12
 goals.seq <- 0:goalMax
 goals.length <- length(goals.seq)
 

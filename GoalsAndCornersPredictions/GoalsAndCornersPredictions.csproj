@@ -123,11 +123,18 @@
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="lmbp.R" />
+    <None Include="newnamesbeta.R" />
     <None Include="packages.config" />
+    <None Include="pbivpois.R" />
     <None Include="Properties\app.manifest" />
     <None Include="script.R" />
     <None Include="scriptCorners.R" />
     <None Include="scriptGoals.R" />
+    <None Include="script_bivariate_corners.R" />
+    <None Include="script_bivariate_goals.R" />
+    <None Include="simplebp.R" />
+    <None Include="splitbeta.R" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.5">

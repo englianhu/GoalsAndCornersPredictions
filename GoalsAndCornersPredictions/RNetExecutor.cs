@@ -141,7 +141,7 @@ namespace GoalsAndCornersPredictions
 
                     engine.Evaluate("cat (\"80%\", \"\n\")");
 
-                    if (this.predType == PredictionType.corner)
+                    if (this.m_predType == PredictionType.corner)
                     {
                         engine.Evaluate("goals <- 0:14");
                     }
