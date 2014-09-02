@@ -58,9 +58,6 @@ namespace GoalsAndCornersPredictions
                   gameDetails.koDate = dr[4].ToString();
               });
 
-            log.Info("GetGoalsPrediction is being invoked for " + gameDetails.ToString());
-            log.Info("This pointer = " + this);
-
             return gameDetails;
         }
 

@@ -300,31 +300,37 @@ namespace GoalsAndCornersPredictions
 
         public string GetCornersPrediction(string gameId)
         {
+            log.Info("GetCornersPrediction is invoked for " + gameId);
             return cornersPrediction.execute(gameId, 0);
         }
 
         public string GetCornersPredictionWithDepth(string gameId, int depth)
         {
+            log.Info("GetCornersPredictionWithDepth is invoked for " + gameId);
             return cornersPrediction.execute(gameId, depth);
         }
 
         public string GetGoalsPrediction(string gameId)
         {
+            log.Info("GetGoalsPrediction is invoked for " + gameId);
             return goalsPrediction.execute(gameId, 0);
         }
 
         public string GetGoalsPredictionWithDepth(string gameId, int depth)
         {
+            log.Info("GetGoalsPredictionWithDepth is invoked for " + gameId);
             return goalsPrediction.execute(gameId, depth);
         }
 
         public string GetGoalsBiVarPrediction(string gameId)
         {
+            log.Info("GetGoalsBiVarPrediction is invoked for " + gameId);
             return goalsBiVarPrediction.execute(gameId, 0);
         }
 
         public string GetCornersBiVarPrediction(string gameId)
         {
+            log.Info("GetCornersBiVarPrediction is invoked for " + gameId);
             return cornersBiVarPrediction.execute(gameId, 0);
         }
     }
