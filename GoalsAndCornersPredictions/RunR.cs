@@ -38,6 +38,13 @@ namespace GoalsAndCornersPredictions
 
         public virtual void Run(string gameId, int depth)
         {
+            string path = getPath(gameId);
+
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
             ArrayList games = new ArrayList();
             string leagueIds = cfg.GetLeagueIDs(gameId, depth);
 
@@ -70,11 +77,9 @@ namespace GoalsAndCornersPredictions
             stop2.Stop();
             log.Info("getting gamess from DB: " + stop2.Elapsed.TotalSeconds + " seconds");
 
-            string path = getPath(gameId);
 
-            Directory.CreateDirectory(path);
             cfg.createInputFile.Create(path, games);
-
+        
             cfg.rExecutor.Execute(path);
         }
     }

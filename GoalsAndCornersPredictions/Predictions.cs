@@ -31,14 +31,32 @@ namespace GoalsAndCornersPredictions
             return Path.Combine(GlobalData.Instance.PredictionDir,league_id + "_" + cfg.dayJoin + DateTime.Today.ToString("ddMMyyyy"));
         }
 
+        private readonly object syncLock = new object();
+
+        private bool CreateDirIfNotExist(string path)
+        {
+            lock (syncLock)
+            {
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+
         public override void Run(string gameId, int depth)
         {
             string path = getPath(gameId);
 
-            if (!Directory.Exists(path))
+            if (CreateDirIfNotExist(path))
             {
                 base.Run(gameId, depth);
-                File.Create(Path.Combine(path, "rFinished.txt"));
+                using (File.Create(Path.Combine(path, "rFinished.txt"))) { }
             }
             else
             {

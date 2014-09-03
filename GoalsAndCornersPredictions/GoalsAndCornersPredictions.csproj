@@ -107,6 +107,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configuration.cs" />
+    <Compile Include="CreateInputFile.cs" />
+    <Compile Include="GameDetails.cs" />
     <Compile Include="GetResults.cs" />
     <Compile Include="Predictions.cs" />
     <Compile Include="RNetBiVariateExecutor.cs" />
