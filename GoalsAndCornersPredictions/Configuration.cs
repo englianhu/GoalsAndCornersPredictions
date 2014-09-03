@@ -39,23 +39,23 @@ namespace GoalsAndCornersPredictions
 
         public GameDetails GetGameDetails(string id)
         {
-            var sql = "SELECT g1.id, t1.name, t2.name, l1.name, g1.kodate"
+            var sql = "SELECT t1.name, t2.name, l1.name, g1.kodate"
             + " FROM games g1"
             + " JOIN teams t1 ON g1.team1 = t1.id"
             + " JOIN teams t2 ON g1.team2 = t2.id"
             + " JOIN leagues l1 ON l1.id = g1.league_id"
-            + " WHERE g1.id =" + id;
+            + " WHERE g1.id =" + id + ";";
 
             GameDetails gameDetails = new GameDetails();
+            gameDetails.gameId = id;
 
             dbStuff.RunSQL(sql,
               (dr) =>
               {
-                  gameDetails.gameId = int.Parse(dr[0].ToString());
-                  gameDetails.team1Name = dr[1].ToString();
-                  gameDetails.team2Name = dr[2].ToString();
-                  gameDetails.leagueName = dr[3].ToString();
-                  gameDetails.koDate = dr[4].ToString();
+                  gameDetails.team1Name = dr[0].ToString();
+                  gameDetails.team2Name = dr[1].ToString();
+                  gameDetails.leagueName = dr[2].ToString();
+                  gameDetails.koDate = dr[3].ToString();
               });
 
             return gameDetails;

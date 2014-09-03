@@ -79,8 +79,19 @@ namespace GoalsAndCornersPredictions
 
 
             cfg.createInputFile.Create(path, games);
-        
+
             cfg.rExecutor.Execute(path);
+
+            //if all OK the following files are created:
+            checkFile(Path.Combine(path, "winH.csv"));
+            checkFile(Path.Combine(path, "winA.csv"));
+            checkFile(Path.Combine(path, "likelyProb.csv"));
+            checkFile(Path.Combine(path, "likelyScore.csv"));
+        }
+
+        private void checkFile(string full_path)
+        {
+            if (!File.Exists(full_path)) throw new Exception("File: " + full_path + " does not exist!");
         }
     }
 }

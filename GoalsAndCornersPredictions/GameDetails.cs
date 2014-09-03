@@ -2,7 +2,7 @@
 {
     public class GameDetails
     {
-        public int gameId;
+        public string gameId;
         public string team1Name;
         public string team2Name;
         public string leagueName;
