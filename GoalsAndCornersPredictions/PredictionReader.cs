@@ -9,16 +9,9 @@ using System.Diagnostics;
 
 namespace GoalsAndCornersPredictions
 {
-    public class ProbabilityHolder
-    {
-        public int team1Id;
-        public int team2Id;
-        public string probability;
-    }
-
     public class Statistics
     {
-        public Dictionary<string, int> statsId2teamName = new Dictionary<string,int>();
+        public Dictionary<string, int> statsId2teamName = new Dictionary<string, int>();
         public string[,] stats = null;
     }
 
@@ -43,7 +36,7 @@ namespace GoalsAndCornersPredictions
                 var team_names = header.Split(';').ToList();
                 team_names.RemoveAt(0);
 
-                for (int i = 0; i < team_names.Count; i++ )
+                for (int i = 0; i < team_names.Count; i++)
                 {
                     holder.statsId2teamName.Add(team_names[i], i);
                 }
@@ -61,7 +54,7 @@ namespace GoalsAndCornersPredictions
 
                     for (int i = 1; i < values.Length; i++)
                     {
-                        holder.stats[j - 1, i -1] = values[i];
+                        holder.stats[j - 1, i - 1] = values[i];
                     }
                     j++;
                 }
