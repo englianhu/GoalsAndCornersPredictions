@@ -63,7 +63,9 @@ namespace GoalsAndCornersPredictions
 
         public string GetLeagueIDs(string gameId, int depth = 0)
         {
-            string leagueIds = null;
+            string leagueIds = "";
+
+            log.Info("Fetching leagues...");
 
             //get league id
             dbStuff.RunSQL("SELECT league_id FROM games WHERE id = " + gameId + ";",
@@ -73,10 +75,14 @@ namespace GoalsAndCornersPredictions
                 }
             );
 
-            if (depth != 0 || naughtyLeagues.Any(x => x == leagueIds))
+            if(naughtyLeagues.Any(x => x == leagueIds))
             {
-                leagueIds = null;
+                log.Warn("Cannot run prodiction on this league: " + leagueIds + " for game: " + gameId);
+                leagueIds = "";
+            }
 
+            if (depth != 0)
+            {
                 string team1Id = "";
                 string team2Id = "";
 
@@ -129,13 +135,16 @@ namespace GoalsAndCornersPredictions
                 }
             }
 
-            if (leagueIds == null) throw new Exception("Could not determine league for given game");
-
-            log.Info("League Search: " + leagueIds);
+            if (leagueIds == "")
+            {
+                log.Warn("Could not determine league for given game");
+            }
+            else
+            {
+                log.Info("League Search: " + leagueIds);
+            }
 
             return leagueIds;
         }
-
-      
     }
 }

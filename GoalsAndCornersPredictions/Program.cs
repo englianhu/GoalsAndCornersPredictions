@@ -86,7 +86,7 @@ namespace GoalsAndCornersPredictions
         goal,
         corner
     };
-
+   
     public class Service : IService
     {
         private static readonly log4net.ILog log
@@ -97,40 +97,41 @@ namespace GoalsAndCornersPredictions
         Predictions goalsBiVarPrediction = new Predictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReaderWithNoNames(), new RNetBiVariateExecutor(PredictionType.goal)));
         Predictions cornersBiVarPrediction = new Predictions(new Configuration("_c_", new CreateInputFileCorners(), new PredictionReaderWithNoNames(), new RNetBiVariateExecutor(PredictionType.corner)));
 
+        int serviceTimeout = 240; 
         public string GetCornersPrediction(string gameId)
         {
             log.Info("GetCornersPrediction is invoked for " + gameId);
-            return cornersPrediction.execute(gameId, 0);
+            return cornersPrediction.execute(gameId, 0, serviceTimeout);
         }
 
         public string GetCornersPredictionWithDepth(string gameId, int depth)
         {
             log.Info("GetCornersPredictionWithDepth is invoked for " + gameId);
-            return cornersPrediction.execute(gameId, depth);
+            return cornersPrediction.execute(gameId, depth, serviceTimeout);
         }
 
         public string GetGoalsPrediction(string gameId)
         {
             log.Info("GetGoalsPrediction is invoked for " + gameId);
-            return goalsPrediction.execute(gameId, 0);
+            return goalsPrediction.execute(gameId, 0, serviceTimeout);
         }
 
         public string GetGoalsPredictionWithDepth(string gameId, int depth)
         {
             log.Info("GetGoalsPredictionWithDepth is invoked for " + gameId);
-            return goalsPrediction.execute(gameId, depth);
+            return goalsPrediction.execute(gameId, depth, serviceTimeout);
         }
 
         public string GetGoalsBiVarPrediction(string gameId)
         {
             log.Info("GetGoalsBiVarPrediction is invoked for " + gameId);
-            return goalsBiVarPrediction.execute(gameId, 0);
+            return goalsBiVarPrediction.execute(gameId, 0, serviceTimeout);
         }
 
         public string GetCornersBiVarPrediction(string gameId)
         {
             log.Info("GetCornersBiVarPrediction is invoked for " + gameId);
-            return cornersBiVarPrediction.execute(gameId, 0);
+            return cornersBiVarPrediction.execute(gameId, 0, serviceTimeout);
         }
     }
 

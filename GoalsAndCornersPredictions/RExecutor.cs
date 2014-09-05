@@ -23,8 +23,6 @@ namespace GoalsAndCornersPredictions
 
         protected PredictionType m_predType;
 
- //       protected string rBinPath = @"C:\Program Files\R\R-3.0.2\bin\x64";
-
         public RExecutor(PredictionType predType)
         {
             this.m_predType = predType;
@@ -49,37 +47,40 @@ namespace GoalsAndCornersPredictions
                 using (Process p = new Process())
                 {
                     p.StartInfo = si;
-                //    p.Exited += processExited;
+
                     p.EnableRaisingEvents = true;
+
+                    log.Info("About to start R process at " + DateTime.Now);
 
                     if (p.Start())
                     {
                         p.PriorityClass = ProcessPriorityClass.AboveNormal;
+                        log.Info("Set process to Above Normal");
                     }
 
-                    int maxRWaitTime = 10;
+                    int maxRWaitTime = 120;
                     int waitedTime = 0;
 
-                    while (p.HasExited == false || waitedTime > maxRWaitTime)
+                    while (p.HasExited == false && waitedTime < maxRWaitTime)
                     {
-                        log.Debug("Waiting " + waitedTime + " seconds for R process to finish");
+                        log.Info("Waiting " + waitedTime + " seconds for R process with memory " + p.PeakWorkingSet64 + " to finish");
+                        log.Info("R handle count = " + p.HandleCount); ;
+                        log.Info("R has exitted = " + p.HasExited); ;
+                        log.Info("R responding = " + p.Responding);
+                        log.Info("R threads = " + p.Threads.Count);
+                        log.Info("");
 
-                        System.Threading.Thread.Sleep(2000);
+                        System.Threading.Thread.Sleep(1000);
 
                         waitedTime++;
-                        /*
-                        var rProcesses = Process.GetProcesses().ToArray().ToList().Select(x => x.MainWindowTitle);
-
-                        if (rProcesses.Any(y => y.Equals(GlobalData.Instance.RexecutableFullPath)) == false)
-                        {
-                            log.Warn("Looks like R has crashed, exitting...");
-                            break;
-                        }
-                         */
                     }
-                    if (waitedTime < maxRWaitTime) return false;
-                    return true;
+                    
+                    if (waitedTime > maxRWaitTime)
+                    {
+                        return false;
+                    }
                 }
+                return true;
         }
 
         protected override ProcessStartInfo SetupProcess(string workingDirectory)
@@ -104,7 +105,7 @@ namespace GoalsAndCornersPredictions
 
         public override bool Execute(String workingDirectory)
         {
-            log.Debug("Running process in directory: " + workingDirectory);
+            log.Info("Running process in directory: " + workingDirectory);
 
             CopyScripts(workingDirectory);
 
@@ -112,6 +113,5 @@ namespace GoalsAndCornersPredictions
          
             return Run(si);
         }
-
     };
 }
