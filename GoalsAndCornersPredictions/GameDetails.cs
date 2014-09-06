@@ -8,7 +8,7 @@
         public string leagueName;
         public string koDate;
 
-        public PredRow prediction = new PredRow();
+        public PredRow prediction = null;
 
         public override string ToString()
         {

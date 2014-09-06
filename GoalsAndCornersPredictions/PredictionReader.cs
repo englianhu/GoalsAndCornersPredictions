@@ -111,4 +111,38 @@ namespace GoalsAndCornersPredictions
             return holder;
         }
     };
+
+
+    public class PredictionReaderWithCache : PredictionReader
+    {
+        private static readonly log4net.ILog log
+         = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        Dictionary<string, Statistics> data = new Dictionary<string, Statistics>();
+        PredictionReader reader;
+
+        public PredictionReaderWithCache(PredictionReader reader)
+        {
+            this.reader = reader;
+        }
+
+        public override Statistics Read(String full_name)
+        {
+            Statistics stats = null;
+            lock (this)
+            {
+                if (!data.ContainsKey(full_name))
+                {
+                    stats = reader.Read(full_name);
+                    data[full_name] = stats;
+                }
+                else
+                {
+                    log.Info("Returning cached entry");
+                    stats = data[full_name];
+                }
+                return stats;
+            }
+        }
+    }
 }

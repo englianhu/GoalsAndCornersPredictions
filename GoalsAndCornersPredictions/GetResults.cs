@@ -26,15 +26,8 @@ namespace GoalsAndCornersPredictions
 
         public string get(string fileName)
         {
-            if (!File.Exists(Path.Combine(path, "winH.csv")))
-            {
-                throw new Exception("File " + Path.Combine(path, "winH.csv") + " does not exist");
-            }
-
             string ret_val = null;
-            var stopWatchA1 = new Stopwatch();
-            stopWatchA1.Start();
-
+        
             Statistics stats = predictionReader.Read(Path.Combine(path, fileName));
 
             if (stats == null)
@@ -57,8 +50,7 @@ namespace GoalsAndCornersPredictions
 
                 ret_val = stats.stats[team1statId, team2statId];                           
             }
-            stopWatchA1.Stop();
-            log.Info("getting results completed in: " + stopWatchA1.Elapsed.TotalSeconds + " seconds");
+
             return ret_val;
         }
     }

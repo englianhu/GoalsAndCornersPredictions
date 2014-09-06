@@ -8,10 +8,10 @@ namespace GoalsAndCornersPredictions
 {
     public class Configuration
     {
-        private static readonly log4net.ILog log 
+        private static readonly log4net.ILog log
             = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        public string dayJoin = "__";
+        private string prefix = "NoPrefix";
 
         public R rExecutor = null;
         public CreateInputFile createInputFile = null;
@@ -20,9 +20,9 @@ namespace GoalsAndCornersPredictions
 
         protected List<string> naughtyLeagues = null;
 
-        public Configuration(string dayJoin, CreateInputFile createInputFile, PredictionReader reader, RExecutor r)
+        public Configuration(string prefix, CreateInputFile createInputFile, PredictionReader reader, RExecutor r)
         {
-            this.dayJoin = dayJoin;
+            this.prefix = prefix;
             this.rExecutor = r;
             this.createInputFile = createInputFile;
             this.predReader = reader;
@@ -61,6 +61,11 @@ namespace GoalsAndCornersPredictions
             return gameDetails;
         }
 
+        public string getPrefix()
+        {
+            return prefix;
+        }
+
         public string GetLeagueIDs(string gameId, int depth = 0)
         {
             string leagueIds = "";
@@ -75,7 +80,7 @@ namespace GoalsAndCornersPredictions
                 }
             );
 
-            if(naughtyLeagues.Any(x => x == leagueIds))
+            if (naughtyLeagues.Any(x => x == leagueIds))
             {
                 log.Warn("Cannot run prodiction on this league: " + leagueIds + " for game: " + gameId);
                 leagueIds = "";
@@ -137,7 +142,7 @@ namespace GoalsAndCornersPredictions
 
             if (leagueIds == "")
             {
-                log.Warn("Could not determine league for given game");
+                throw new Exception("Could not determine league for given game");
             }
             else
             {

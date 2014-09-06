@@ -36,7 +36,7 @@ namespace GoalsAndCornersPredictions
 
         [WebGet]
         string GetGoalsBiVarPrediction(string gameId);
-        
+
         [WebGet]
         string GetCornersBiVarPrediction(string gameId);
     }
@@ -44,20 +44,111 @@ namespace GoalsAndCornersPredictions
 
     public class GlobalData
     {
-        private static GlobalData instance;
+        private static GlobalData instance = null;
+
         public Database dbStuff { get; set; }
         public string PredictionDir { get; set; }
         public string RexecutableFullPath { get; set; }
-        public string GoalsScriptFullPath {get; set; }
+        public string GoalsScriptFullPath { get; set; }
         public string CornersScriptFullPath { get; set; }
         public string GoalsBiVariateScriptFullPath { get; set; }
         public string CornersBiVariateScriptFullPath { get; set; }
 
-        private GlobalData() { }
+
+        private GlobalData()
+        {
+            DbCreator dbCreator = null;
+
+            switch (ConfigurationManager.AppSettings["dbtype"])
+            {
+                case "pg":
+                    dbCreator = new NpgsqlCreator();
+                    break;
+                case "sqlite":
+                    dbCreator = new SQLiteCreator();
+                    break;
+                default:
+                    dbCreator = new SQLiteCreator();
+                    break;
+            }
+
+            Database db = new Database(dbCreator);
+            db.Connect(ConfigurationManager.AppSettings["dbConnectionString"]);
+            dbStuff = db;
+            PredictionDir = ConfigurationManager.AppSettings["PredictionDir"];
+            RexecutableFullPath = ConfigurationManager.AppSettings["RexecutableFullPath"];
+            GoalsScriptFullPath = ConfigurationManager.AppSettings["GoalsScriptFullPath"];
+            CornersScriptFullPath = ConfigurationManager.AppSettings["CornersScriptFullPath"];
+            GoalsBiVariateScriptFullPath = ConfigurationManager.AppSettings["GoalsBiVariateScriptFullPath"];
+            CornersBiVariateScriptFullPath = ConfigurationManager.AppSettings["CornersBiVariateScriptFullPath"];
+
+        }
 
         public static GlobalData Instance
         {
-            get { return instance ?? (instance = new GlobalData()); }
+            get
+            {
+                if (instance == null)
+                {
+                    instance = new GlobalData();
+                }
+                return instance;
+            }
+        }
+    }
+
+    public class DirReader
+    {
+        public static void Populate(PredictionReaderWithCache reader)
+        {
+            Task t = Task.Run(() =>
+            {
+                string path = GlobalData.Instance.PredictionDir;
+                foreach (var dir in Directory.GetDirectories(path))
+                {
+                    reader.Read(path);
+                }
+            });
+        }
+    }
+
+    public class GlobalService
+    {
+        private static GlobalService instance = null;
+
+        public Predictions goalsPrediction = null;
+        public Predictions cornersPrediction = null;
+        public Predictions goalsBiVarPrediction = null;
+        public Predictions cornersBiVarPrediction = null;
+
+        private GlobalService()
+        {
+            var goalsReader = new PredictionReaderWithCache(new PredictionReader());
+            var cornersReader = new PredictionReaderWithCache(new PredictionReader());
+            var goalsBiVarReader = new PredictionReaderWithCache(new PredictionReaderWithNoNames());
+            var cornersBiVarReader = new PredictionReaderWithCache(new PredictionReaderWithNoNames());
+
+            DirReader.Populate(goalsReader);
+            DirReader.Populate(cornersReader);
+            DirReader.Populate(goalsBiVarReader);
+            DirReader.Populate(cornersBiVarReader);
+
+            goalsPrediction = new Predictions(new Configuration("GoalsPrediction", new CreateInputFileGoals(), goalsReader, new RExecutor(PredictionType.goal)));
+            cornersPrediction = new Predictions(new Configuration("CornersPrediction", new CreateInputFileCorners(), cornersReader, new RNETExecutor(PredictionType.corner)));
+            goalsBiVarPrediction = new Predictions(new Configuration("GoalsBivariate", new CreateInputFileGoals(), goalsBiVarReader, new RNetBiVariateExecutor(PredictionType.goal)));
+            cornersBiVarPrediction = new Predictions(new Configuration("CornersBivariate", new CreateInputFileCorners(), cornersBiVarReader, new RNetBiVariateExecutor(PredictionType.corner)));
+        }
+
+        public static GlobalService Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    instance = new GlobalService();
+                }
+                return instance;
+            }
         }
     }
 
@@ -86,52 +177,107 @@ namespace GoalsAndCornersPredictions
         goal,
         corner
     };
-   
+
     public class Service : IService
     {
         private static readonly log4net.ILog log
            = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        Predictions goalsPrediction = new Predictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReader(), new RExecutor(PredictionType.goal)));
-        Predictions cornersPrediction = new Predictions(new Configuration("_c_", new CreateInputFileCorners(), new PredictionReader(), new RNETExecutor(PredictionType.corner)));
-        Predictions goalsBiVarPrediction = new Predictions(new Configuration("_g_", new CreateInputFileGoals(), new PredictionReaderWithNoNames(), new RNetBiVariateExecutor(PredictionType.goal)));
-        Predictions cornersBiVarPrediction = new Predictions(new Configuration("_c_", new CreateInputFileCorners(), new PredictionReaderWithNoNames(), new RNetBiVariateExecutor(PredictionType.corner)));
-
-        int serviceTimeout = 240; 
+        int serviceTimeout = 240;
         public string GetCornersPrediction(string gameId)
         {
-            log.Info("GetCornersPrediction is invoked for " + gameId);
-            return cornersPrediction.execute(gameId, 0, serviceTimeout);
+            var json_result = "null";
+            try
+            {
+                log.Info("GetCornersPrediction is invoked for " + gameId);
+                var data = GlobalService.Instance.cornersPrediction.execute(gameId, 0, serviceTimeout);
+                json_result = JsonConvert.SerializeObject(data, Formatting.Indented);
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            return json_result;
         }
 
         public string GetCornersPredictionWithDepth(string gameId, int depth)
         {
-            log.Info("GetCornersPredictionWithDepth is invoked for " + gameId);
-            return cornersPrediction.execute(gameId, depth, serviceTimeout);
+            var json_result = "null";
+            try
+            {
+                log.Info("GetCornersPredictionWithDepth is invoked for " + gameId);
+                var data = GlobalService.Instance.cornersPrediction.execute(gameId, depth, serviceTimeout);
+                json_result = JsonConvert.SerializeObject(data, Formatting.Indented);
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            return json_result;
         }
 
         public string GetGoalsPrediction(string gameId)
         {
-            log.Info("GetGoalsPrediction is invoked for " + gameId);
-            return goalsPrediction.execute(gameId, 0, serviceTimeout);
+            var json_result = "null";
+            try
+            {
+                log.Info("GetGoalsPrediction is invoked for " + gameId);
+                var data = GlobalService.Instance.goalsPrediction.execute(gameId, 0, serviceTimeout);
+                json_result = JsonConvert.SerializeObject(data, Formatting.Indented);
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            return json_result;
         }
 
         public string GetGoalsPredictionWithDepth(string gameId, int depth)
         {
-            log.Info("GetGoalsPredictionWithDepth is invoked for " + gameId);
-            return goalsPrediction.execute(gameId, depth, serviceTimeout);
+            var json_result = "null";
+            try
+            {
+                log.Info("GetGoalsPredictionWithDepth is invoked for " + gameId);
+                var data = GlobalService.Instance.goalsPrediction.execute(gameId, depth, serviceTimeout);
+                json_result = JsonConvert.SerializeObject(data, Formatting.Indented);
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            return json_result;
         }
 
         public string GetGoalsBiVarPrediction(string gameId)
         {
-            log.Info("GetGoalsBiVarPrediction is invoked for " + gameId);
-            return goalsBiVarPrediction.execute(gameId, 0, serviceTimeout);
+            var json_result = "null";
+            try
+            {
+                log.Info("GetGoalsBiVarPrediction is invoked for " + gameId);
+                var data = GlobalService.Instance.goalsBiVarPrediction.execute(gameId, 0, serviceTimeout);
+                json_result = JsonConvert.SerializeObject(data, Formatting.Indented);
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            return json_result;
         }
 
         public string GetCornersBiVarPrediction(string gameId)
         {
-            log.Info("GetCornersBiVarPrediction is invoked for " + gameId);
-            return cornersBiVarPrediction.execute(gameId, 0, serviceTimeout);
+            var json_result = "null";
+            try
+            {
+                log.Info("GetCornersBiVarPrediction is invoked for " + gameId);
+                var data = GlobalService.Instance.cornersBiVarPrediction.execute(gameId, 0, serviceTimeout);
+                json_result = JsonConvert.SerializeObject(data, Formatting.Indented);
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            return json_result;
         }
     }
 
@@ -145,32 +291,9 @@ namespace GoalsAndCornersPredictions
         static void Main(string[] args)
         {
             string uriString;
-            DbCreator dbCreator = null;
-
-            switch (ConfigurationManager.AppSettings["dbtype"])
-            {
-                case "pg":
-                    dbCreator = new NpgsqlCreator();
-                    break;
-                case "sqlite":
-                    dbCreator = new SQLiteCreator();
-                    break;
-                default:
-                    dbCreator = new SQLiteCreator();
-                    break;
-            }
-
-            Database db = new Database(dbCreator);
-            db.Connect(ConfigurationManager.AppSettings["dbConnectionString"]);
 
             GlobalData gd = GlobalData.Instance;
-            gd.dbStuff = db;
-            gd.PredictionDir = ConfigurationManager.AppSettings["PredictionDir"];
-            gd.RexecutableFullPath = ConfigurationManager.AppSettings["RexecutableFullPath"];
-            gd.GoalsScriptFullPath = ConfigurationManager.AppSettings["GoalsScriptFullPath"];
-            gd.CornersScriptFullPath = ConfigurationManager.AppSettings["CornersScriptFullPath"];
-            gd.GoalsBiVariateScriptFullPath = ConfigurationManager.AppSettings["GoalsBiVariateScriptFullPath"];
-            gd.CornersBiVariateScriptFullPath = ConfigurationManager.AppSettings["CornersBiVariateScriptFullPath"];
+            GlobalService gp = GlobalService.Instance;
 
             //create working directory
             if (!Directory.Exists(gd.PredictionDir))

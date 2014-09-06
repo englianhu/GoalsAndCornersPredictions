@@ -32,7 +32,7 @@ namespace GoalsAndCornersPredictions
                     league_id = dr[0].ToString();
                 });
 
-            return Path.Combine(GlobalData.Instance.PredictionDir,league_id + "_" + cfg.dayJoin + DateTime.Today.ToString("ddMMyyyy"));
+            return Path.Combine(GlobalData.Instance.PredictionDir, cfg.getPrefix() + "_" + league_id + "_" + DateTime.Today.ToString("ddMMyyyy"));
         }
 
         private readonly object syncLock = new object();
@@ -59,43 +59,29 @@ namespace GoalsAndCornersPredictions
 
             log.Info("Starting the run in path: " + path);
 
-            //if (!Directory.Exists(path))
-			//if (CreateDirIfNotExist(path))  //will bring this back soon
-            //{
-            //    try
-            //    {
-            //        base.Run(gameId, depth);
-            //        using (File.Create(Path.Combine(path, "rFinished.txt"))) { }
-
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        Directory.Delete(path, true);
-            //        throw e;
-            //    }
-				
-            if (!Directory.Exists(path) || !File.Exists(Path.Combine(path, "rFinished.txt")))
+            if (CreateDirIfNotExist(path))  //will bring this back soon
             {
-                log.Info("No previous data found");
-                base.Run(gameId, depth, totalPredictionTimeout);
-                File.Create(Path.Combine(path, "rFinished.txt"));
+                try
+                {
+                    base.Run(gameId, depth, totalPredictionTimeout);
+                    using (File.Create(Path.Combine(path, "rFinished.txt"))) { }
+
+                }
+                catch (Exception e)
+                {
+                    using (File.Create(Path.Combine(path, "rError.txt"))) { }
+                    throw e;
+                }
             }
             else
             {
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
-
-                while (true)
+                while (!File.Exists(Path.Combine(path, "rFinished.txt")))
                 {
-                    log.Info("Waiting in SyncDir for " + sw.Elapsed.TotalSeconds);
-                    
-                    System.Threading.Thread.Sleep(1000);
+                    if (File.Exists(Path.Combine(path, "rError.txt"))) throw new Exception("error file exists for directory: " + path);
+                    // the following is to break the loop in case it got stuck
+                    if (!Directory.Exists(path)) throw new Exception("Directory " + path + " has disappeared");
 
-                    if(File.Exists(Path.Combine(path, "rFinished.txt")))
-                        break;
-                    
-                    if(sw.Elapsed.TotalSeconds > totalPredictionTimeout)
-                        break;
+                    System.Threading.Thread.Sleep(1000);
                 }
             }
         }
@@ -113,51 +99,32 @@ namespace GoalsAndCornersPredictions
             this.cfg = cfg;
         }
 
-        public string execute(string gameId, int depth, int totalPredictionTimeout)
+        public PredRow execute(string gameId, int depth, int totalPredictionTimeout)
         {
-            try
-            {
-                log.Info("Fetching game details");
-                var gameDetails = cfg.GetGameDetails(gameId);
+            log.Info("Fetching game details");
+            GameDetails gameDetails = cfg.GetGameDetails(gameId);
 
-                log.Info("Received game details");
+            log.Info("Received game details");
 
-                SyncOnDir s = new SyncOnDir(cfg);
-                s.Run(gameId, depth, totalPredictionTimeout);
+            SyncOnDir s = new SyncOnDir(cfg);
+            s.Run(gameId, depth, totalPredictionTimeout);
 
-                string path = s.getPath(gameId);
+            string path = s.getPath(gameId);
 
-                log.Info("Fetching prediction results");
-                GetResults result = new GetResults(cfg.predReader, path, gameDetails);
+            GetResults result = new GetResults(cfg.predReader, path, gameDetails);
 
-                log.Info("Received rsults 1");
+            PredRow prediction = new PredRow();
 
-                gameDetails.prediction.winHome = result.get("winH.csv");
-                log.Info("Received rsults 2");
+            prediction.gameId = gameId;
+            prediction.winHome = result.get("winH.csv");
+            prediction.winAway = result.get("winA.csv");
+            prediction.likelyProb = result.get("likelyProb.csv");
+            prediction.likelyScore = result.get("likelyScore.csv");
 
-                gameDetails.prediction.winAway = result.get("winA.csv");
-                log.Info("Received rsults 3");
+            //might be used later
+            gameDetails.prediction = prediction;
 
-                gameDetails.prediction.likelyProb = result.get("likelyProb.csv");
-                log.Info("Received rsults 4");
-
-                gameDetails.prediction.likelyScore = result.get("likelyScore.csv");
-                log.Info("Received rsults 5");
-
-
-                var json_result = JsonConvert.SerializeObject(gameDetails.prediction, Formatting.Indented);
-
-                log.Info("Result:");
-                log.Info(json_result);
-
-                return json_result;
-            }
-            catch (Exception ce)
-            {
-                string msg = "Exception caught: " + ce;
-                log.Error(msg);
-                return msg;
-            }
+            return prediction;
         }
     }
 }
