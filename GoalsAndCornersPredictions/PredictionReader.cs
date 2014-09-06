@@ -115,9 +115,6 @@ namespace GoalsAndCornersPredictions
 
     public class PredictionReaderWithCache : PredictionReader
     {
-        private static readonly log4net.ILog log
-         = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
         Dictionary<string, Statistics> data = new Dictionary<string, Statistics>();
         PredictionReader reader;
 
@@ -138,7 +135,6 @@ namespace GoalsAndCornersPredictions
                 }
                 else
                 {
-                    log.Info("Returning cached entry");
                     stats = data[full_name];
                 }
                 return stats;
