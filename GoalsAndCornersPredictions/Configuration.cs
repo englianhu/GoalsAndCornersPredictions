@@ -1,11 +1,88 @@
 ﻿using Db;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace GoalsAndCornersPredictions
 {
+
+    public class LeagueId
+    {
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
+        public Database dbStuff = null;
+        Dictionary<string, string> data = new Dictionary<string, string>();
+
+        public LeagueId(Database db)
+        {
+            dbStuff = db;
+
+            Task t = Task.Run(() =>
+            {
+                log.Info("Preloading of league ids");
+                dbStuff.RunSQL("SELECT id, league_id FROM games;",
+                    (dr) =>
+                    {
+                        data.Add(dr[0].ToString(), dr[1].ToString());
+                    });
+                log.Info("Preloading of league ids finished");
+            });
+        }
+
+        public string get(string gameId)
+        {
+            if (!data.ContainsKey(gameId))
+            {
+                string league_id = null;
+                dbStuff.RunSQL("SELECT league_id FROM games WHERE id = " + gameId + ";",
+                (dr) =>
+                {
+                    league_id = dr[0].ToString();
+                });
+                data[gameId] = league_id;
+                return league_id;
+            }
+            else
+            {
+                return data[gameId];
+            }
+        }
+    }
+
+    public class CachedDb
+    {
+        protected Database dbStuff = null;
+        LeagueId leagueIds;
+
+        public CachedDb(Database db)
+        {
+            dbStuff = db;
+            leagueIds = new LeagueId(db);
+        }
+
+        public List<string> OneColumnQuery(string sql)
+        {
+            return dbStuff.OneColumnQuery(sql);
+        }
+
+        public void RunSQL(string sql, Action<DbDataReader> a)
+        {
+            dbStuff.RunSQL(sql, a);
+        }
+
+        public string getLeagueId(string gameId)
+        {
+            lock (leagueIds)
+            {
+                return leagueIds.get(gameId);
+            }
+        }
+    }
+
+
     public class Configuration
     {
         private static readonly log4net.ILog log
@@ -16,7 +93,7 @@ namespace GoalsAndCornersPredictions
         public R rExecutor = null;
         public CreateInputFile createInputFile = null;
         public PredictionReader predReader = null;
-        public Database dbStuff = null;
+        public CachedDb dbStuff = null;
 
         protected List<string> naughtyLeagues = null;
 
@@ -72,17 +149,11 @@ namespace GoalsAndCornersPredictions
 
             log.Info("Fetching leagues...");
 
-            //get league id
-            dbStuff.RunSQL("SELECT league_id FROM games WHERE id = " + gameId + ";",
-                (dr) =>
-                {
-                    leagueIds = dr[0].ToString();
-                }
-            );
+            leagueIds = dbStuff.getLeagueId(gameId);
 
             if (naughtyLeagues.Any(x => x == leagueIds))
             {
-                log.Warn("Cannot run prodiction on this league: " + leagueIds + " for game: " + gameId);
+                log.Warn("Cannot run prediction on this league: " + leagueIds + " for game: " + gameId);
                 leagueIds = "";
             }
 

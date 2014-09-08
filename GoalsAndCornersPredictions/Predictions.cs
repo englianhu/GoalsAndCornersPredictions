@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Db;
+using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace GoalsAndCornersPredictions
 {
     public delegate void RunRDelegate(string gameId, int depth);
 
+   
     public class SyncOnDir : RunR
     {
         private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -20,17 +22,14 @@ namespace GoalsAndCornersPredictions
         public SyncOnDir(Configuration cfg)
             : base(cfg)
         {
+          
         }
 
         public override string getPath(string gameId)
         {
             string league_id = "invalid_league_id";
 
-            cfg.dbStuff.RunSQL("SELECT league_id FROM games WHERE id = " + gameId + ";",
-                (dr) =>
-                {
-                    league_id = dr[0].ToString();
-                });
+            league_id = cfg.dbStuff.getLeagueId(gameId);
 
             return Path.Combine(GlobalData.Instance.PredictionDir, cfg.getPrefix() + "_" + league_id + "_" + DateTime.Today.ToString("ddMMyyyy"));
         }

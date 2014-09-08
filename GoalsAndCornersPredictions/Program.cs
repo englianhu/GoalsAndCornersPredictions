@@ -46,7 +46,7 @@ namespace GoalsAndCornersPredictions
     {
         private static GlobalData instance = null;
 
-        public Database dbStuff { get; set; }
+        public CachedDb dbStuff { get; set; }
         public string PredictionDir { get; set; }
         public string RexecutableFullPath { get; set; }
         public string GoalsScriptFullPath { get; set; }
@@ -74,7 +74,7 @@ namespace GoalsAndCornersPredictions
 
             Database db = new Database(dbCreator);
             db.Connect(ConfigurationManager.AppSettings["dbConnectionString"]);
-            dbStuff = db;
+            dbStuff = new CachedDb(db);
             PredictionDir = ConfigurationManager.AppSettings["PredictionDir"];
             RexecutableFullPath = ConfigurationManager.AppSettings["RexecutableFullPath"];
             GoalsScriptFullPath = ConfigurationManager.AppSettings["GoalsScriptFullPath"];
