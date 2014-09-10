@@ -1,4 +1,5 @@
-﻿namespace GoalsAndCornersPredictions
+﻿using Common;
+namespace GoalsAndCornersPredictions
 {
     public class GameDetails
     {

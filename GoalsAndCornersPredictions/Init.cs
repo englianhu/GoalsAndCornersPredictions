@@ -6,7 +6,6 @@ using System.Configuration;
 using System.ServiceModel;
 using System.ServiceModel.Description;
 using System.ServiceModel.Web;
-using Newtonsoft.Json;
 using System.Collections;
 using Db;
 using System.IO;
@@ -54,14 +53,7 @@ namespace GoalsAndCornersPredictions
         }
     }
 
-    public class PredRow
-    {
-        public string gameId { get; set; }
-        public string winHome { get; set; }
-        public string winAway { get; set; }
-        public string likelyScore { get; set; }
-        public string likelyProb { get; set; }
-    };
+  
 
     public class GameResult
     {

@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoalsAndCornersPredictions"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Database", "..\..\Visual Studio 2012\Projects\Database\Database\Database.csproj", "{F31723EA-9582-4F24-8005-797B95517B1D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "..\..\Visual Studio 2012\Projects\Common\Common\Common.csproj", "{E3CF077C-0A41-4E71-BA05-69FCF065D129}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,11 +32,14 @@ Global
 		{F31723EA-9582-4F24-8005-797B95517B1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F31723EA-9582-4F24-8005-797B95517B1D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F31723EA-9582-4F24-8005-797B95517B1D}.Release|x86.ActiveCfg = Release|Any CPU
+		{E3CF077C-0A41-4E71-BA05-69FCF065D129}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3CF077C-0A41-4E71-BA05-69FCF065D129}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3CF077C-0A41-4E71-BA05-69FCF065D129}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E3CF077C-0A41-4E71-BA05-69FCF065D129}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3CF077C-0A41-4E71-BA05-69FCF065D129}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E3CF077C-0A41-4E71-BA05-69FCF065D129}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(Performance) = preSolution
-		HasPerformanceSessions = true
 	EndGlobalSection
 EndGlobal

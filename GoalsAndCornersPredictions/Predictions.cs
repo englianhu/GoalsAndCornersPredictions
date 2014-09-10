@@ -1,5 +1,5 @@
-﻿using Db;
-using Newtonsoft.Json;
+﻿using Common;
+using Db;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -86,19 +86,19 @@ namespace GoalsAndCornersPredictions
         }
     };
 
-    public class Predictions
+    public class GoalsAndCorners : GoalsAndCornersPrediction
     {
         private static readonly log4net.ILog log
          = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         private Configuration cfg;
 
-        public Predictions(Configuration cfg)
+        public GoalsAndCorners(Configuration cfg)
         {
             this.cfg = cfg;
         }
 
-        public PredRow execute(string gameId, int depth, int totalPredictionTimeout)
+        public override PredRow execute(string gameId, int depth, int totalPredictionTimeout)
         {
             log.Info("Fetching game details");
             GameDetails gameDetails = cfg.GetGameDetails(gameId);
