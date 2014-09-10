@@ -29,11 +29,9 @@ namespace GoalsAndCornersPredictions
         public string GoalsBiVariateScriptFullPath { get; set; }
         public string CornersBiVariateScriptFullPath { get; set; }
 
-
-        private GlobalData()
+        public void Init(Database db)
         {
-            Database db = new Database(DbCreator.Create(ConfigurationManager.AppSettings["dbtype"]));
-            db.Connect(ConfigurationManager.AppSettings["dbConnectionString"]);
+           
             dbStuff = new CachedDb(db);
             PredictionDir = ConfigurationManager.AppSettings["PredictionDir"];
             RexecutableFullPath = ConfigurationManager.AppSettings["RexecutableFullPath"];
