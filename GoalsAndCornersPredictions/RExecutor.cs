@@ -8,6 +8,12 @@ using System.Threading.Tasks;
 
 namespace GoalsAndCornersPredictions
 {
+    public enum PredictionType
+    {
+        goal,
+        corner
+    };
+
     public abstract class R
     {
         protected abstract void CopyScripts(string workingDirectory);

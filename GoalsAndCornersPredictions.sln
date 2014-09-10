@@ -2,6 +2,11 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoalsAndCornersPredictions", "GoalsAndCornersPredictions\GoalsAndCornersPredictions.csproj", "{19BACB84-4B39-4E90-8AF2-76BCF2251FE2}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F31723EA-9582-4F24-8005-797B95517B1D} = {F31723EA-9582-4F24-8005-797B95517B1D}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Database", "..\..\Visual Studio 2012\Projects\Database\Database\Database.csproj", "{F31723EA-9582-4F24-8005-797B95517B1D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,6 +24,12 @@ Global
 		{19BACB84-4B39-4E90-8AF2-76BCF2251FE2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{19BACB84-4B39-4E90-8AF2-76BCF2251FE2}.Release|x86.ActiveCfg = Release|x86
 		{19BACB84-4B39-4E90-8AF2-76BCF2251FE2}.Release|x86.Build.0 = Release|x86
+		{F31723EA-9582-4F24-8005-797B95517B1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F31723EA-9582-4F24-8005-797B95517B1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F31723EA-9582-4F24-8005-797B95517B1D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F31723EA-9582-4F24-8005-797B95517B1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F31723EA-9582-4F24-8005-797B95517B1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F31723EA-9582-4F24-8005-797B95517B1D}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
